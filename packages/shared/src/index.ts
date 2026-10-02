@@ -17,3 +17,5 @@ export * from './knowledge/formula';
 export * from './knowledge/tables';
 export * from './knowledge/pages';
 export * from './knowledge/resources';
+export * from './corpus/corpus';
+export * from './corpus/text';

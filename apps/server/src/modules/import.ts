@@ -444,8 +444,10 @@ export function undoImport(ctx: AppContext, batchId: string): number {
     custom_table: 'custom_tables',
     glossary_term: 'glossary_terms',
     character: 'characters',
+    corpus_document: 'corpus_documents',
   };
   const order = [
+    'corpus_document',
     'glossary_term',
     'character',
     'page',

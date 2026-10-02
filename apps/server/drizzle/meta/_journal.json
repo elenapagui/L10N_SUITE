@@ -50,6 +50,20 @@
       "when": 1790959469265,
       "tag": "0006_conocimiento",
       "breakpoints": true
+    },
+    {
+      "idx": 7,
+      "version": "6",
+      "when": 1790961431351,
+      "tag": "0007_corpus",
+      "breakpoints": true
+    },
+    {
+      "idx": 8,
+      "version": "6",
+      "when": 1790961432283,
+      "tag": "0008_corpus_busqueda",
+      "breakpoints": true
     }
   ]
 }

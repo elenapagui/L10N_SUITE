@@ -15,6 +15,7 @@ import { registerTemplateEntity } from './modules/work/templates';
 import { registerTimeEntity } from './modules/work/time';
 import { registerInvoiceEntity } from './modules/finance/invoices';
 import { registerExpenseEntity } from './modules/finance/expenses';
+import { registerCorpusEntities } from './modules/corpus/catalog';
 import { registerPageEntity } from './modules/knowledge/pages';
 import { registerResourceEntities } from './modules/knowledge/resources';
 import { purgeDeletedRows, registerTableEntity } from './modules/knowledge/tables';
@@ -36,6 +37,7 @@ export function registerEntities(): void {
   registerPageEntity();
   registerTableEntity();
   registerResourceEntities();
+  registerCorpusEntities();
 }
 
 /**

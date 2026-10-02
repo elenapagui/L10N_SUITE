@@ -23,10 +23,11 @@ export const ENTITY_TYPES = {
   custom_table: { label: 'Tabla', plural: 'Tablas', route: '/tablas' },
   glossary_term: { label: 'Término', plural: 'Términos', route: '/trabajo/juegos' },
   character: { label: 'Personaje', plural: 'Personajes', route: '/trabajo/juegos' },
+  corpus_version: { label: 'Versión del corpus', plural: 'Versiones del corpus', route: '/corpus' },
   corpus_document: {
     label: 'Documento del corpus',
     plural: 'Documentos del corpus',
-    route: '/corpus/textos',
+    route: '/corpus/documentos',
   },
   publication: { label: 'Publicación', plural: 'Publicaciones', route: '/academico/publicaciones' },
   journal: { label: 'Revista', plural: 'Revistas', route: '/academico/revistas' },
