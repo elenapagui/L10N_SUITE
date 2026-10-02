@@ -14,6 +14,11 @@ export interface TestApp {
   cleanup: () => Promise<void>;
 }
 
+/** Borrado con reintentos: en Windows un archivo recién cerrado puede seguir bloqueado un instante. */
+export function removeDir(dir: string): void {
+  fs.rmSync(dir, { recursive: true, force: true, maxRetries: 10, retryDelay: 100 });
+}
+
 export function tempDir(prefix = 'l10n-test-'): string {
   return fs.mkdtempSync(path.join(os.tmpdir(), prefix));
 }
@@ -41,7 +46,7 @@ export async function createTestApp(
     close,
     cleanup: async () => {
       await close();
-      fs.rmSync(dataDir, { recursive: true, force: true });
+      removeDir(dataDir);
     },
   };
 }

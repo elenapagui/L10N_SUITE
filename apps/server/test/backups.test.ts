@@ -8,7 +8,7 @@ import {
   selectBackupsToDelete,
   type RotatableBackup,
 } from '../src/services/backup/rotation';
-import { createTestApp, multipart, tempDir, type TestApp } from './helpers';
+import { createTestApp, multipart, removeDir, tempDir, type TestApp } from './helpers';
 
 const apps: TestApp[] = [];
 async function open(options: Parameters<typeof createTestApp>[0] = {}) {
@@ -18,7 +18,10 @@ async function open(options: Parameters<typeof createTestApp>[0] = {}) {
 }
 
 afterEach(async () => {
-  for (const t of apps.splice(0)) await t.cleanup();
+  // Primero se cierran todas (varias pueden compartir carpeta) y después se borran.
+  const all = apps.splice(0);
+  for (const t of all) await t.close();
+  for (const t of all) removeDir(t.dataDir);
 });
 
 describe('nombres de archivo de copia', () => {
@@ -155,7 +158,7 @@ describe('copias de seguridad', () => {
     });
     await t.app.inject({ method: 'POST', url: '/api/backups' });
     expect(fs.readdirSync(custom).some((f) => f.endsWith('_manual.sqlite.gz'))).toBe(true);
-    fs.rmSync(custom, { recursive: true, force: true });
+    removeDir(custom);
   });
 });
 

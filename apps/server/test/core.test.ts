@@ -138,8 +138,11 @@ describe('etiquetas, búsqueda y papelera', () => {
     t.app.ctx.sqlite.prepare("UPDATE tags SET deleted_at = '2000-01-01T00:00:00.000Z'").run();
     await t.close();
     const again = await createTestApp({ dataDir: t.dataDir });
-    expect((await again.app.inject('/api/trash')).json()).toHaveLength(0);
-    await again.close();
+    try {
+      expect((await again.app.inject('/api/trash')).json()).toHaveLength(0);
+    } finally {
+      await again.close();
+    }
   });
 });
 
