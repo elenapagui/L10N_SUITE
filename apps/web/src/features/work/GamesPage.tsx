@@ -1,5 +1,5 @@
 import { useMemo, useState } from 'react';
-import { useNavigate, useParams } from '@tanstack/react-router';
+import { useNavigate, useParams, useSearch } from '@tanstack/react-router';
 import { Gamepad2, Plus, Search, Trash2 } from 'lucide-react';
 import {
   BUSINESS_MODELS,
@@ -34,6 +34,11 @@ import { JobsTable } from './JobsPage';
 import { NewProjectDialog, ProjectsTable } from './ProjectsPage';
 import { TaskListView } from './tasks/TaskListView';
 import { BackLink, FieldGrid, Section, Stat, usePatch } from './shared';
+import {
+  CharactersPanel,
+  GameKnowledgePanel,
+  GlossaryPanel,
+} from '@/features/resources/GameResources';
 
 /** Lista de valores libres con sugerencias (géneros, plataformas). */
 function ChipsInput({
@@ -245,6 +250,7 @@ export function GamesPage() {
 
 export function GameDetailPage() {
   const { gameId } = useParams({ strict: false }) as { gameId: string };
+  const { tab } = useSearch({ from: '/trabajo/juegos/$gameId' });
   const navigate = useNavigate();
   const q = useGame(gameId);
   const projects = useProjects({ gameId });
@@ -300,9 +306,22 @@ export function GameDetailPage() {
           value={<span className="text-lg">{labelOf(GAME_STATUSES, g.status)}</span>}
         />
       </div>
-      <Tabs defaultValue="ficha">
+      <Tabs
+        value={tab ?? 'ficha'}
+        onValueChange={(v) =>
+          void navigate({
+            to: '/trabajo/juegos/$gameId',
+            params: { gameId },
+            search: v === 'ficha' ? {} : { tab: v },
+            replace: true,
+          })
+        }
+      >
         <TabsList>
           <TabsTrigger value="ficha">Ficha</TabsTrigger>
+          <TabsTrigger value="glosario">Glosario</TabsTrigger>
+          <TabsTrigger value="personajes">Personajes</TabsTrigger>
+          <TabsTrigger value="conocimiento">Páginas y tablas</TabsTrigger>
           <TabsTrigger value="trabajo">Proyectos y encargos</TabsTrigger>
           <TabsTrigger value="tareas">Tareas</TabsTrigger>
           <TabsTrigger value="archivos">Archivos</TabsTrigger>
@@ -416,6 +435,15 @@ export function GameDetailPage() {
         </TabsContent>
         <TabsContent value="archivos">
           <AttachmentsPanel entityType="game" entityId={g.id} />
+        </TabsContent>
+        <TabsContent value="glosario">
+          <GlossaryPanel gameId={g.id} />
+        </TabsContent>
+        <TabsContent value="personajes">
+          <CharactersPanel gameId={g.id} />
+        </TabsContent>
+        <TabsContent value="conocimiento">
+          <GameKnowledgePanel gameId={g.id} />
         </TabsContent>
         <TabsContent value="notas">
           <CommitInput

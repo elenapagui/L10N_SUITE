@@ -1,6 +1,9 @@
 @import 'tailwindcss';
 @import '@fontsource-variable/inter';
 
+/* Clases que usan los componentes del editor de páginas (BlockNote, variante shadcn). */
+@source '../../../node_modules/@blocknote/shadcn/dist';
+
 @custom-variant dark (&:where(.dark, .dark *));
 
 :root {
@@ -122,5 +125,31 @@
   :lang(ko),
   .ko {
     word-break: keep-all;
+  }
+}
+
+/* Editor de páginas */
+.page-editor .bn-editor {
+  background: transparent;
+  font-family: var(--font-sans);
+}
+.page-editor .bn-container {
+  --bn-font-family: var(--font-sans);
+}
+
+/* Impresión de páginas: solo el contenido. */
+@media print {
+  aside,
+  header,
+  [data-sonner-toaster] {
+    display: none !important;
+  }
+  html,
+  body,
+  #root,
+  main,
+  #page-scroll {
+    height: auto !important;
+    overflow: visible !important;
   }
 }

@@ -12,6 +12,9 @@ import { ExpensesPage } from '@/features/finance/ExpensesPage';
 import { InvoicesPage } from '@/features/finance/InvoicesPage';
 import { ReportsPage } from '@/features/finance/ReportsPage';
 import { HomePage } from '@/features/home/HomePage';
+import { PageViewPage, PagesHomePage } from '@/features/pages/PagesPage';
+import { ResourceRedirect } from '@/features/resources/ResourceRedirect';
+import { TablePage, TablesPage } from '@/features/tables/TablesPage';
 import { SettingsPage } from '@/features/settings/SettingsPage';
 import { TrashPage } from '@/features/trash/TrashPage';
 import { ClientDetailPage } from '@/features/work/ClientDetailPage';
@@ -56,6 +59,8 @@ const gamesRoute = createRoute({
 const gameRoute = createRoute({
   getParentRoute: () => rootRoute,
   path: '/trabajo/juegos/$gameId',
+  validateSearch: (search: Record<string, unknown>): { tab?: string } =>
+    typeof search.tab === 'string' ? { tab: search.tab } : {},
   component: GameDetailPage,
 });
 const projectsRoute = createRoute({
@@ -128,6 +133,32 @@ const reportsRoute = createRoute({
   component: ReportsPage,
 });
 
+const pagesRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: '/paginas',
+  component: PagesHomePage,
+});
+const pageRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: '/paginas/$pageId',
+  component: PageViewPage,
+});
+const tablesRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: '/tablas',
+  component: TablesPage,
+});
+const tableRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: '/tablas/$tableId',
+  component: TablePage,
+});
+const resourceRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: '/recursos/$kind/$id',
+  component: ResourceRedirect,
+});
+
 const routes = [
   homeRoute,
   settingsRoute,
@@ -147,6 +178,11 @@ const routes = [
   invoicesRoute,
   expensesRoute,
   reportsRoute,
+  pagesRoute,
+  pageRoute,
+  tablesRoute,
+  tableRoute,
+  resourceRoute,
 ];
 
 /** Secciones de fases futuras: se muestran como «en construcción». */

@@ -49,6 +49,11 @@ const WORK_KEYS = [
   'expenses',
   'finance-overview',
   'finance-quarter',
+  'pages',
+  'backlinks',
+  'tables',
+  'glossary',
+  'characters',
 ];
 
 export function useInvalidateWork() {

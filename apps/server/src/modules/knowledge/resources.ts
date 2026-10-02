@@ -395,6 +395,11 @@ export async function resourceRoutes(app: FastifyInstance) {
     return listTerms(ctx, q);
   });
 
+  app.get('/api/glossary/:id', async (req) => {
+    const { id } = parse(idParam, req.params);
+    return getTerm(ctx, id);
+  });
+
   app.post('/api/glossary', async (req, reply) => {
     reply.code(201);
     return createTerm(ctx, req.body);
@@ -442,6 +447,11 @@ export async function resourceRoutes(app: FastifyInstance) {
   app.get('/api/characters', async (req) => {
     const q = parse(z.object({ gameId: idSchema.optional() }), req.query);
     return listCharacters(ctx, q.gameId);
+  });
+
+  app.get('/api/characters/:id', async (req) => {
+    const { id } = parse(idParam, req.params);
+    return getCharacter(ctx, id);
   });
 
   app.post('/api/characters', async (req, reply) => {

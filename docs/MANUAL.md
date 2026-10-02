@@ -123,6 +123,47 @@ La app **no emite facturas**: las emites con tu programa de facturación (o tu g
 
 - Los importes en otras monedas se convierten a la principal con el tipo de cambio de cada factura o gasto.
 
+## Páginas (sustituyen a Notion)
+
+- **Árbol de páginas:** a la izquierda. Arrastra una página sobre otra para meterla dentro, o encima o debajo para cambiar el orden. Con «…» puedes añadirla a favoritas, duplicarla, sacarla a la raíz o eliminarla (se lleva sus subpáginas a la papelera y vuelven con ella si la restauras).
+- **Editor por bloques:**
+  - escribe «/» para insertar títulos, listas, casillas, desplegables, citas, **avisos**, código, tablas, imágenes, vídeos o archivos;
+  - arrastra los bloques con el asa que aparece a su izquierda;
+  - las imágenes y archivos que pegues o arrastres se guardan como adjuntos de la página.
+- **Menciones:** escribe «@» para enlazar una página, un juego, un cliente, un proyecto, un encargo, una tarea, un término o un personaje. Si escribes un nombre que no existe, puedes crear una subpágina con él. La ficha mencionada muestra «Mencionado en».
+- **Guardado automático:** arriba a la derecha verás «Guardado». Si la misma página se modifica en otra ventana, la app avisa en lugar de pisar los cambios.
+- **Historial:** el reloj abre las versiones anteriores (se guarda una cada 10 minutos de edición). Puedes verlas y restaurarlas; la versión que tenías se conserva.
+- **Plantillas:** guía de estilo, kickoff de proyecto, informe de LQA, acta de reunión, ficha de lectura y plan de artículo.
+- **Exportar:** en «…», a Markdown o «Imprimir o guardar en PDF».
+- **Importar:** un archivo Markdown suelto desde **Páginas → Importar Markdown**; un espacio de Notion entero desde **Ajustes → Importar** (ver más abajo).
+
+## Tablas (sustituyen a Google Sheets)
+
+- **Crear o importar:** en **Tablas**, crea una tabla vacía o importa un Excel o CSV. Cada hoja del Excel se convierte en una tabla, y la app detecta el tipo de cada columna (número, moneda, porcentaje, fecha, casilla, selección, enlace, correo…). Desde Google Sheets: **Archivo → Descargar → Microsoft Excel**.
+- **Columnas:** pulsa el nombre de una columna para editarla, ordenar, moverla, ocultarla o eliminarla; arrastra su borde para cambiar el ancho; «+» añade una nueva. Al cambiar el tipo, los valores se convierten (los que no encajan se vacían).
+- **Tipos especiales:**
+  - **Selección y selección múltiple:** opciones con color; se crean al escribirlas o al pegar valores nuevos.
+  - **Relación:** enlaza cada fila con juegos, clientes, proyectos, encargos, páginas, términos o filas de otra tabla.
+  - **Fórmula:** se calcula sola en cada fila. Las columnas van entre llaves y los argumentos se separan con «;»: `REDONDEAR({Palabras} * {Tarifa}; 2)`, `SI({Estado} = "Aceptada"; 1; 0)`, `DIAS({Entrega}; HOY())`, `{Fecha} + 30`. Los decimales se escriben con punto.
+- **Como en una hoja de cálculo:** muévete con las flechas, Tab e Intro; escribe para editar; Supr borra; selecciona varias celdas arrastrando o con Mayús; **copia y pega desde Excel** (si pegas más filas de las que hay, se crean); `Ctrl+Z` deshace. El icono ⤢ de cada fila abre su ficha completa.
+- **Vistas:** cada tabla puede tener varias vistas (cuadrícula, **tablero** por una selección o casilla, **calendario** por una fecha), cada una con sus filtros, orden, agrupación, columnas visibles y fila de totales (suma, media, mínimo, máximo, recuento…).
+- **Exportar:** a Excel o CSV con los filtros y el orden de la vista.
+
+## Recursos de cada juego
+
+En la ficha de cada juego:
+
+- **Glosario:** término en coreano, español e inglés, categoría, estado (propuesto, aprobado o prohibido), contexto, fuente y notas. Añade términos desde la fila superior (Intro para el siguiente). **Importar Excel** reconoce las cabeceras habituales («Coreano», «Español», «Inglés», «Contexto»…); si el archivo no tiene cabeceras, la columna A es el coreano y la B el español. No se duplican los términos que ya existen, y la importación se puede deshacer en **Ajustes → Importar**. **Exportar** genera un Excel con el glosario (A coreano, B español…) y una hoja de personajes.
+- **Personajes:** nombres, género gramatical para la concordancia, tratamiento en español (tú, usted…), nivel de habla en coreano (반말, 해요체, 하십시오체) y forma de hablar.
+- **Páginas y tablas:** crea la **guía de estilo** del juego desde su plantilla, otras páginas o tablas vinculadas, y consulta qué páginas mencionan el juego.
+
+## Importar desde Notion
+
+1. En Notion: **Configuración → Exportar todo el contenido del espacio** (o «Exportar» en una página), con el formato **Markdown & CSV** e incluyendo las subpáginas.
+2. En la app: **Ajustes → Importar → Notion** y elige el ZIP.
+3. Todo queda dentro de una página «Importación de Notion · fecha» con la misma jerarquía; las imágenes y archivos pasan a ser adjuntos y cada base de datos se convierte en una tabla. Arrastra las páginas donde quieras.
+4. Si algo no ha salido bien, deshaz la importación entera en «Importaciones anteriores».
+
 ## Importar desde ClickUp, Google Sheets o Excel
 
 En **Ajustes → Importar**:
@@ -136,9 +177,15 @@ En **Ajustes → Importar**:
 
 ## Atajos de teclado
 
-| Atajo           | Acción                                 |
-| --------------- | -------------------------------------- |
-| `Ctrl+K` / `⌘K` | Buscar fichas e ir a cualquier sección |
+| Atajo               | Acción                                                    |
+| ------------------- | --------------------------------------------------------- |
+| `Ctrl+K` / `⌘K`     | Buscar fichas e ir a cualquier sección                    |
+| `/`                 | En una página: insertar un bloque                         |
+| `@`                 | En una página: mencionar una ficha                        |
+| `Ctrl+C` / `Ctrl+V` | En una tabla: copiar y pegar celdas (también desde Excel) |
+| `Ctrl+Z`            | En una tabla: deshacer el último cambio                   |
+| `Intro` / `F2`      | En una tabla: editar la celda                             |
+| `Supr`              | En una tabla: vaciar las celdas seleccionadas             |
 
 ## Si algo falla
 

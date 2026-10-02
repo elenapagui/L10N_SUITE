@@ -374,6 +374,141 @@ for (const [ago, concept, supplier, category, base, vat] of [
   });
 }
 
+// Conocimiento: glosario, personajes, páginas y una tabla.
+for (const [termKo, termEs, termEn, category, status, context] of [
+  ['마법사', 'hechicero', 'wizard', 'character', 'approved', 'Clase jugable'],
+  ['던전', 'mazmorra', 'dungeon', 'place', 'approved', ''],
+  ['스킬', 'habilidad', 'skill', 'ui', 'approved', 'Nunca «skill» en la interfaz'],
+  ['가챠', 'invocación', 'gacha', 'mechanic', 'proposed', 'Pendiente de confirmar con el cliente'],
+  ['물약', 'poción', 'potion', 'item', 'approved', ''],
+  ['길드', 'gremio', 'guild', 'faction', 'forbidden', 'El cliente prefiere «clan»'],
+] as const) {
+  await post('/api/glossary', {
+    gameId: aether.id,
+    termKo,
+    termEs,
+    termEn,
+    category,
+    status,
+    context,
+  });
+}
+await post('/api/characters', {
+  gameId: aether.id,
+  nameKo: '서연',
+  nameEs: 'Seo-yeon',
+  nameEn: 'Seoyeon',
+  gender: 'f',
+  addressForm: 'tu',
+  koSpeechLevel: 'banmal',
+  speechStyle: 'Directa y bromista; usa jerga juvenil con sus amigos.',
+});
+await post('/api/characters', {
+  gameId: aether.id,
+  nameKo: '장로 무혁',
+  nameEs: 'Anciano Muhyeok',
+  gender: 'm',
+  addressForm: 'usted',
+  koSpeechLevel: 'hamnida',
+  speechStyle: 'Solemne, frases largas y arcaizantes.',
+});
+const guide = await post<{ id: string }>('/api/pages', {
+  template: 'style_guide',
+  gameId: aether.id,
+  title: 'Guía de estilo — Crónicas de Aether',
+});
+await post('/api/pages', {
+  title: 'Notas de la reunión de kickoff',
+  icon: '🗓️',
+  parentId: guide.id,
+  content: [
+    {
+      type: 'paragraph',
+      content: [
+        { type: 'text', text: 'Reunión con el PM sobre ', styles: {} },
+        {
+          type: 'mention',
+          props: { entityType: 'game', entityId: aether.id, label: 'Crónicas de Aether' },
+        },
+        { type: 'text', text: '. Tratamiento de tú en los eventos.', styles: {} },
+      ],
+      children: [],
+    },
+  ],
+});
+await post('/api/pages', {
+  template: 'article_plan',
+  title: 'Artículo: la localización del gacha coreano',
+  isFavorite: true,
+});
+const market = await post<{ id: string; columns: { id: string }[] }>('/api/tables', {
+  name: 'Agencias y candidaturas',
+  icon: '📨',
+});
+const [nameCol] = market.columns;
+const status = await post<{ id: string }>(`/api/tables/${market.id}/columns`, {
+  name: 'Estado',
+  type: 'select',
+  options: {
+    choices: [
+      { id: 'enviada', label: 'Enviada', color: '#3b82f6' },
+      { id: 'prueba', label: 'Prueba de traducción', color: '#eab308' },
+      { id: 'aceptada', label: 'Aceptada', color: '#22c55e' },
+      { id: 'rechazada', label: 'Rechazada', color: '#ef4444' },
+    ],
+  },
+});
+const sent = await post<{ id: string }>(`/api/tables/${market.id}/columns`, {
+  name: 'Fecha de envío',
+  type: 'date',
+});
+const rate = await post<{ id: string }>(`/api/tables/${market.id}/columns`, {
+  name: 'Tarifa ofrecida',
+  type: 'currency',
+  options: { currency: 'EUR' },
+});
+const words = await post<{ id: string }>(`/api/tables/${market.id}/columns`, {
+  name: 'Palabras/mes',
+  type: 'number',
+  options: { decimals: 0 },
+});
+await post(`/api/tables/${market.id}/columns`, {
+  name: 'Ingreso estimado',
+  type: 'formula',
+  options: { formula: 'REDONDEAR({Tarifa ofrecida} * {Palabras/mes}; 2)' },
+});
+await post(`/api/tables/${market.id}/rows`, {
+  rows: [
+    {
+      values: {
+        [nameCol!.id]: 'Seoul Loc Partners',
+        [status.id]: 'prueba',
+        [sent.id]: d(-12),
+        [rate.id]: 9,
+        [words.id]: 8000,
+      },
+    },
+    {
+      values: {
+        [nameCol!.id]: 'Iberia Games Translation',
+        [status.id]: 'aceptada',
+        [sent.id]: d(-40),
+        [rate.id]: 7,
+        [words.id]: 15000,
+      },
+    },
+    { values: { [nameCol!.id]: 'Pixel Bridge', [status.id]: 'enviada', [sent.id]: d(-3) } },
+    {
+      values: {
+        [nameCol!.id]: 'K-Content Global',
+        [status.id]: 'rechazada',
+        [sent.id]: d(-60),
+        [rate.id]: 6,
+      },
+    },
+  ],
+});
+
 for (const [name, color] of [
   ['Urgente', '#ef4444'],
   ['Gacha', '#a855f7'],

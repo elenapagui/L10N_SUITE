@@ -13,7 +13,7 @@ Aplicación de escritorio para dirigir la actividad profesional de traducción d
 | 0    | Base técnica, app de escritorio, copias de seguridad | ✅ Disponible |
 | 1    | Proyectos y tareas                                   | ✅ Disponible |
 | 2    | Finanzas                                             | ✅ Disponible |
-| 3    | Páginas y tablas                                     | Pendiente     |
+| 3    | Páginas y tablas                                     | ✅ Disponible |
 | 4    | Corpus                                               | Pendiente     |
 | 5    | Académico                                            | Pendiente     |
 

@@ -10,7 +10,7 @@ test('muestra el inicio y navega por la barra lateral', async ({ page }) => {
   await expect(page.getByRole('heading', { level: 1 })).toContainText(/Buen(os|as)/);
   await page.getByTestId('nav-/trabajo/proyectos').click();
   await expect(page.getByRole('heading', { name: 'Proyectos' })).toBeVisible();
-  await page.getByTestId('nav-/paginas').click();
+  await page.getByTestId('nav-/corpus').click();
   await expect(page.getByText('Esta sección está en construcción')).toBeVisible();
   await page.getByTestId('nav-/ajustes').click();
   await expect(page.getByRole('heading', { name: 'Ajustes' })).toBeVisible();

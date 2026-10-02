@@ -23,6 +23,10 @@ export function entityRoute(
       return { to: '/finanzas/facturas', search: { factura: id } };
     case 'expense':
       return { to: '/finanzas/gastos' };
+    case 'glossary_term':
+      return { to: `/recursos/glosario/${id}` };
+    case 'character':
+      return { to: `/recursos/personaje/${id}` };
     case 'contact':
     case 'rate':
       return { to: '/trabajo/clientes' };

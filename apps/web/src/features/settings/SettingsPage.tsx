@@ -27,6 +27,7 @@ import { BackupsSettings } from './BackupsPanel';
 import { TagsManager } from './TagsManager';
 import { WorkSettings } from './WorkSettings';
 import { ImportWizard } from './ImportWizard';
+import { NotionImport } from './NotionImport';
 
 export const SETTINGS_TABS = [
   'perfil',
@@ -330,6 +331,7 @@ export function SettingsPage() {
           </Card>
         </TabsContent>
         <TabsContent value="importar">
+          <NotionImport />
           <ImportWizard />
         </TabsContent>
         <TabsContent value="copias">

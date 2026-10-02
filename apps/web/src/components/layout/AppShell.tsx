@@ -97,11 +97,11 @@ export function AppShell() {
   return (
     <TaskSheetProvider>
       <div
-        className="flex h-full overflow-hidden"
+        className="flex h-full overflow-hidden print:block print:h-auto print:overflow-visible"
         data-app-ready={appInfo.data ? 'true' : undefined}
       >
         <Sidebar collapsed={collapsed} onToggle={toggleSidebar} />
-        <div className="flex min-w-0 flex-1 flex-col">
+        <div className="flex min-w-0 flex-1 flex-col print:block">
           <EngineBanner />
           <header className="flex h-12 shrink-0 items-center gap-2 border-b px-4">
             <button
