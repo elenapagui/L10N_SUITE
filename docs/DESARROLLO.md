@@ -63,7 +63,7 @@ L10N_DISABLE_GPU=1 xvfb-run -a npx electron apps/desktop/build/app --no-sandbox 
 ## Publicar una versión
 
 1. Sube la versión en `package.json` (raíz).
-2. Crea y sube una etiqueta `vX.Y.Z`.
+2. Crea y sube una etiqueta `vX.Y.Z`, o bien lanza a mano el flujo **Instaladores** (pestaña Actions → Run workflow) indicando la versión `vX.Y.Z`: en ese caso GitHub crea la etiqueta sobre el commit de la rama elegida.
 3. El flujo **Instaladores** (`.github/workflows/release.yml`):
    - genera el `.exe` y el `.dmg`;
    - arranca cada app empaquetada en modo de autocomprobación;
