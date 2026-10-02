@@ -205,6 +205,20 @@ export function resolveRate(
   return best?.r ?? null;
 }
 
+export function createClient(ctx: AppContext, raw: unknown): Client {
+  const input = parse(clientInputSchema, raw);
+  const id = insertRow(ctx, 'clients', CLIENT_COLUMNS, input);
+  const client = getClient(ctx, id);
+  indexClient(ctx, client);
+  logActivity(ctx, {
+    entityType: 'client',
+    entityId: id,
+    action: 'crear',
+    summary: `Cliente «${client.name}» creado`,
+  });
+  return client;
+}
+
 export function registerClientEntities(): void {
   registerTrashable({
     type: 'client',

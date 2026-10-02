@@ -76,6 +76,44 @@ El ZIP incluye también una carpeta `legible/` con el contenido de cada tabla en
 
 Lo que borras va a la **Papelera**, donde se guarda 30 días. Justo después de borrar también puedes pulsar **Deshacer** en el aviso.
 
+## Trabajo: clientes, juegos, proyectos y encargos
+
+- **Clientes:** datos fiscales, condiciones (moneda, plazo de pago, IVA, IRPF), contactos, NDA, plataforma del cliente y **tarifas**. En «Datos» puedes ajustar la **rejilla de coincidencias del CAT**, es decir, cuánto paga el cliente por cada banda (100 %, 95–99 %…).
+- **Juegos:** la ficha central del juego (títulos KO/ES/EN, desarrolladora, géneros, plataformas, modelo de negocio…). Desde ella ves sus proyectos, encargos y tareas.
+- **Proyectos:** reúnen cliente, juego y par de idiomas. Puedes asociarles una carpeta del ordenador y abrirla con un clic.
+- **Encargos (lotes):** cada parche, evento, DLC o ficha de tienda. Al crearlo:
+  - se aplica sola la tarifa del cliente que coincida en servicio, unidad e idiomas, y si no hay, la general de **Ajustes → Trabajo**;
+  - con **Análisis por coincidencias** introduces el recuento por bandas o lo pegas desde Excel o desde el informe del CAT; la app calcula el volumen ponderado y el importe;
+  - puedes fijar el importe a mano;
+  - la plantilla «Encargo estándar» crea las tareas habituales (traducir, consultas, QA con checklist, entregar, registrar para facturar) con fechas relativas a la entrega.
+- **Consultas al cliente:** registra cada duda (ID de cadena, texto origen, pregunta y respuesta) y expórtalas a Excel para enviarlas.
+
+## Tareas
+
+- **Vistas:** «Mi trabajo» (vencidas, hoy, próximos 7 días…), «Lista» (por estado) y «Tablero» (kanban: arrastra las tarjetas entre columnas).
+- **Alta rápida:** escribe y pulsa Intro. Si terminas con «hoy», «mañana» o «pasado mañana» se pone la fecha, y «!» al final la marca como urgente. Por ejemplo: «Enviar consultas mañana !».
+- **Panel lateral:** al pulsar una tarea se abre el panel con estado, prioridad, fechas, estimación, repetición, proyecto, encargo, juego, etiquetas, descripción, checklist, subtareas y comentarios.
+- **Tareas que se repiten:** cada día, semana, mes, mes en el último día laborable, trimestre o año. Al completarla se crea la siguiente.
+- **Áreas y listas:** organizan las tareas que no son de un proyecto, como los espacios y listas de ClickUp. Se configuran en **Ajustes → Trabajo**, junto con los estados y las plantillas.
+
+## Tiempo y calendario
+
+- **Cronómetro:** el de la barra superior funciona con cualquier proyecto, encargo o tarea, y solo hay uno en marcha. También puedes añadir tiempo a mano en **Tiempo**.
+- **Datos de cada encargo:** muestra el tiempo dedicado y el €/hora efectivo.
+- **Calendario:** reúne las entregas y las tareas con fecha. Arrastra un elemento a otro día para cambiar su fecha.
+- **Avisos:** la app avisa de las entregas en menos de 24 horas, las entregas atrasadas y las tareas vencidas. Se pueden desactivar en **Ajustes → Preferencias**.
+
+## Importar desde ClickUp, Google Sheets o Excel
+
+En **Ajustes → Importar**:
+
+1. Elige qué importar: clientes, juegos, proyectos o tareas.
+2. Sube un archivo .csv o .xlsx:
+   - en **ClickUp**, exporta la lista o el espacio a CSV;
+   - en **Google Sheets**, usa **Archivo → Descargar → Microsoft Excel**.
+3. Revisa a qué campo va cada columna (la app lo propone) y la vista previa.
+4. Pulsa **Importar**. Si algo no sale como esperabas, en «Importaciones anteriores» puedes **deshacer** la importación entera.
+
 ## Atajos de teclado
 
 | Atajo           | Acción                                 |

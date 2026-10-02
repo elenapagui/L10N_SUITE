@@ -104,6 +104,10 @@
     @apply bg-background text-foreground antialiased;
     font-feature-settings: 'cv11', 'ss01';
   }
+  /* Los elementos de una rejilla pueden encogerse (si no, un texto largo desborda la pantalla). */
+  .grid > * {
+    min-width: 0;
+  }
   /* El coreano no se parte por sílabas en mitad de una palabra. */
   :lang(ko),
   .ko {

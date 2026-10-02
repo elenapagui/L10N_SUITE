@@ -35,3 +35,32 @@ export function isInside(root: string, target: string): boolean {
   const rel = path.relative(path.resolve(root), path.resolve(target));
   return rel === '' || (!rel.startsWith('..') && !path.isAbsolute(rel));
 }
+
+function sleepSync(ms: number): void {
+  Atomics.wait(new Int32Array(new SharedArrayBuffer(4)), 0, 0, ms);
+}
+
+/**
+ * Renombra `src` sobre `dest`. En Windows un archivo recién cerrado puede seguir bloqueado
+ * unos instantes (antivirus, indexador): se reintenta y, como último recurso, se copia.
+ */
+export function replaceFile(src: string, dest: string): void {
+  let lastError: unknown;
+  for (let attempt = 0; attempt < 20; attempt++) {
+    try {
+      fs.renameSync(src, dest);
+      return;
+    } catch (error) {
+      lastError = error;
+      const code = (error as NodeJS.ErrnoException).code;
+      if (code !== 'EPERM' && code !== 'EBUSY' && code !== 'EACCES') throw error;
+      sleepSync(100);
+    }
+  }
+  try {
+    fs.copyFileSync(src, dest);
+    fs.rmSync(src, { force: true });
+  } catch {
+    throw lastError;
+  }
+}

@@ -1,5 +1,9 @@
 import { describe, expect, it } from 'vitest';
 import {
+  autoMap,
+  parseDurationMinutes,
+  parseFlexibleDate,
+  splitList,
   DEFAULT_CAT_GRID,
   describeRecurrence,
   emptyAnalysis,
@@ -82,5 +86,52 @@ describe('recurrencia', () => {
     expect(describeRecurrence({ freq: 'weekly', interval: 1 })).toBe('Cada semana');
     expect(describeRecurrence({ freq: 'monthly', interval: 3 })).toBe('Cada 3 meses');
     expect(describeRecurrence(null)).toBe('No se repite');
+  });
+});
+
+describe('importación', () => {
+  it('interpreta fechas en varios formatos', () => {
+    expect(parseFlexibleDate('2026-10-02')).toBe('2026-10-02');
+    expect(parseFlexibleDate('02/10/2026')).toBe('2026-10-02');
+    expect(parseFlexibleDate('10/02/2026', 'mdy')).toBe('2026-10-02');
+    expect(parseFlexibleDate('10/25/2026')).toBe('2026-10-25');
+    expect(parseFlexibleDate('1790985600000')).toMatch(/^2026-10-0[23]$/);
+    expect(parseFlexibleDate('')).toBeNull();
+    expect(parseFlexibleDate('35/13/2026')).toBeNull();
+  });
+
+  it('interpreta duraciones', () => {
+    expect(parseDurationMinutes('1h 30m')).toBe(90);
+    expect(parseDurationMinutes('1:45')).toBe(105);
+    expect(parseDurationMinutes('1,5 h')).toBe(90);
+    expect(parseDurationMinutes('45')).toBe(45);
+    expect(parseDurationMinutes('2 horas')).toBe(120);
+  });
+
+  it('separa listas y sugiere la asignación de columnas de ClickUp', () => {
+    expect(splitList('[urgente, gacha]')).toEqual(['urgente', 'gacha']);
+    const mapping = autoMap(
+      [
+        'Task ID',
+        'Task Name',
+        'Status',
+        'Due Date',
+        'List Name',
+        'Space Name',
+        'Tags',
+        'Parent ID',
+      ],
+      'tasks',
+    );
+    expect(mapping).toMatchObject({
+      title: 'Task Name',
+      status: 'Status',
+      dueDate: 'Due Date',
+      list: 'List Name',
+      area: 'Space Name',
+      tags: 'Tags',
+      externalId: 'Task ID',
+      parentExternalId: 'Parent ID',
+    });
   });
 });

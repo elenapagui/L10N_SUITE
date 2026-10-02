@@ -1,8 +1,7 @@
-import fs from 'node:fs';
 import type { AppConfig } from './config';
 import { checkIntegrity, openDatabase, type DB, type SQLite } from './db/connection';
 import { pendingMigrations, runMigrations, schemaVersion } from './db/migrate';
-import { removeIfExists } from './lib/fs';
+import { removeIfExists, replaceFile } from './lib/fs';
 
 export interface Logger {
   info(obj: unknown, msg?: string): void;
@@ -78,7 +77,7 @@ export class AppContext {
     this.close();
     removeIfExists(`${this.config.dbPath}-wal`);
     removeIfExists(`${this.config.dbPath}-shm`);
-    fs.renameSync(newFile, this.config.dbPath);
+    replaceFile(newFile, this.config.dbPath);
     this.open();
     if (this.integrity === 'ok') this.migrate();
   }

@@ -70,6 +70,8 @@ export const importBatches = sqliteTable('import_batches', {
   kind: text('kind').notNull(),
   fileName: text('file_name'),
   rowCount: integer('row_count').notNull().default(0),
+  /** Fichas creadas por la importación ([{ entityType, entityId }]), para poder deshacerla. */
+  items: text('items', { mode: 'json' }).notNull().default('[]'),
   createdAt: text('created_at').notNull(),
   undoneAt: text('undone_at'),
 });

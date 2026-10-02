@@ -13,6 +13,15 @@ export function entityRoute(
       return { to: '/ajustes', search: { tab: 'etiquetas' } };
     case 'attachment':
       return { to: '/ajustes', search: { tab: 'acerca' } };
+    case 'task':
+      return { to: '/trabajo/tareas', search: { tarea: id } };
+    case 'client_query':
+      return { to: '/trabajo/consultas' };
+    case 'time_entry':
+      return { to: '/trabajo/tiempo' };
+    case 'contact':
+    case 'rate':
+      return { to: '/trabajo/clientes' };
     default: {
       const def = (ENTITY_TYPES as Record<string, { route: string }>)[type as EntityType];
       return { to: def ? `${def.route}/${id}` : '/' };

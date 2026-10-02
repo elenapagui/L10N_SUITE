@@ -107,6 +107,35 @@ export function listProjects(
   return rows.map((r) => decodeRow<Project>(PROJECT_COLUMNS, r));
 }
 
+export function createProject(ctx: AppContext, raw: unknown): Project {
+  const { templateId, ...input } = parse(projectInputSchema, raw);
+  assertExists(ctx, 'clients', input.clientId, 'El cliente');
+  assertExists(ctx, 'games', input.gameId, 'El juego');
+  const tx = ctx.sqlite.transaction(() => {
+    const id = insertRow(ctx, 'projects', PROJECT_COLUMNS, input);
+    if (templateId) {
+      applyTemplate(
+        ctx,
+        templateId,
+        { projectId: id, gameId: input.gameId },
+        input.startDate,
+        'project',
+      );
+    }
+    return id;
+  });
+  const id = tx();
+  const project = getProject(ctx, id);
+  indexProject(ctx, project);
+  logActivity(ctx, {
+    entityType: 'project',
+    entityId: id,
+    action: 'crear',
+    summary: `Proyecto «${project.name}» creado`,
+  });
+  return project;
+}
+
 export function registerProjectEntity(): void {
   registerTrashable({
     type: 'project',
@@ -145,31 +174,7 @@ export async function projectRoutes(app: FastifyInstance) {
   });
 
   app.post('/api/projects', async (req, reply) => {
-    const { templateId, ...input } = parse(projectInputSchema, req.body);
-    assertExists(ctx, 'clients', input.clientId, 'El cliente');
-    assertExists(ctx, 'games', input.gameId, 'El juego');
-    const tx = ctx.sqlite.transaction(() => {
-      const id = insertRow(ctx, 'projects', PROJECT_COLUMNS, input);
-      if (templateId) {
-        applyTemplate(
-          ctx,
-          templateId,
-          { projectId: id, gameId: input.gameId },
-          input.startDate,
-          'project',
-        );
-      }
-      return id;
-    });
-    const id = tx();
-    const project = getProject(ctx, id);
-    indexProject(ctx, project);
-    logActivity(ctx, {
-      entityType: 'project',
-      entityId: id,
-      action: 'crear',
-      summary: `Proyecto «${project.name}» creado`,
-    });
+    const project = createProject(ctx, req.body);
     reply.code(201);
     return project;
   });

@@ -14,6 +14,7 @@ import { settingsRoutes } from './modules/settings';
 import { systemRoutes } from './modules/system';
 import { tagRoutes } from './modules/tags';
 import { trashRoutes } from './modules/trash';
+import { importRoutes } from './modules/import';
 import { clientRoutes } from './modules/work/clients';
 import { dashboardRoutes } from './modules/work/dashboard';
 import { gameRoutes } from './modules/work/games';
@@ -115,6 +116,7 @@ export async function buildApp(options: BuildOptions): Promise<FastifyInstance> 
   await app.register(queryRoutes);
   await app.register(templateRoutes);
   await app.register(dashboardRoutes);
+  await app.register(importRoutes);
 
   if (config.webDir && fs.existsSync(path.join(config.webDir, 'index.html'))) {
     await app.register(fastifyStatic, { root: config.webDir, prefix: '/', index: 'index.html' });

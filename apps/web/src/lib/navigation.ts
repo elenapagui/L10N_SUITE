@@ -165,4 +165,4 @@ export const NAV_FOOTER: NavItem[] = [
 export const ALL_NAV_ITEMS: NavItem[] = [...NAV_SECTIONS.flatMap((s) => s.items), ...NAV_FOOTER];
 
 /** Fases ya disponibles en esta versión. */
-export const AVAILABLE_PHASE = 0;
+export const AVAILABLE_PHASE = 1;

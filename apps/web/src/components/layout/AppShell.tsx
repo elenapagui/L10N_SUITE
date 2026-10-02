@@ -8,6 +8,9 @@ import { desktop, modKey } from '@/lib/desktop';
 import { CommandPalette } from './CommandPalette';
 import { RecoveryScreen } from './RecoveryScreen';
 import { Sidebar } from './Sidebar';
+import { TimerWidget } from '@/features/work/time/TimerWidget';
+import { TaskSheetProvider } from '@/features/work/tasks/TaskSheetContext';
+import { useReminders } from '@/hooks/reminders';
 
 function readCollapsed(): boolean {
   try {
@@ -59,6 +62,7 @@ export function AppShell() {
   const [paletteOpen, setPaletteOpen] = useState(false);
   const appInfo = useAppInfo();
   useThemeSync();
+  useReminders();
 
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
@@ -91,30 +95,36 @@ export function AppShell() {
   if (appInfo.data?.integrity === 'error') return <RecoveryScreen />;
 
   return (
-    <div className="flex h-full overflow-hidden" data-app-ready={appInfo.data ? 'true' : undefined}>
-      <Sidebar collapsed={collapsed} onToggle={toggleSidebar} />
-      <div className="flex min-w-0 flex-1 flex-col">
-        <EngineBanner />
-        <header className="flex h-12 shrink-0 items-center gap-2 border-b px-4">
-          <button
-            type="button"
-            onClick={() => setPaletteOpen(true)}
-            className="flex h-8 w-full max-w-md cursor-pointer items-center gap-2 rounded-md border bg-muted/40 px-3 text-sm text-muted-foreground hover:bg-muted"
-            data-testid="open-command-palette"
-          >
-            <Search className="size-4" />
-            <span>Buscar o ir a…</span>
-            <Kbd className="ml-auto">{modKey} K</Kbd>
-          </button>
-          <div className="ml-auto flex items-center gap-1">
-            <ThemeToggle />
-          </div>
-        </header>
-        <main className="min-h-0 flex-1 overflow-y-auto">
-          <Outlet />
-        </main>
+    <TaskSheetProvider>
+      <div
+        className="flex h-full overflow-hidden"
+        data-app-ready={appInfo.data ? 'true' : undefined}
+      >
+        <Sidebar collapsed={collapsed} onToggle={toggleSidebar} />
+        <div className="flex min-w-0 flex-1 flex-col">
+          <EngineBanner />
+          <header className="flex h-12 shrink-0 items-center gap-2 border-b px-4">
+            <button
+              type="button"
+              onClick={() => setPaletteOpen(true)}
+              className="flex h-8 w-full max-w-md cursor-pointer items-center gap-2 rounded-md border bg-muted/40 px-3 text-sm text-muted-foreground hover:bg-muted"
+              data-testid="open-command-palette"
+            >
+              <Search className="size-4" />
+              <span>Buscar o ir a…</span>
+              <Kbd className="ml-auto">{modKey} K</Kbd>
+            </button>
+            <div className="ml-auto flex items-center gap-2">
+              <TimerWidget />
+              <ThemeToggle />
+            </div>
+          </header>
+          <main className="min-h-0 flex-1 overflow-y-auto">
+            <Outlet />
+          </main>
+        </div>
+        <CommandPalette open={paletteOpen} onOpenChange={setPaletteOpen} />
       </div>
-      <CommandPalette open={paletteOpen} onOpenChange={setPaletteOpen} />
-    </div>
+    </TaskSheetProvider>
   );
 }

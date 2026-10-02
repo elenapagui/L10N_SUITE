@@ -1,0 +1,1 @@
+ALTER TABLE `import_batches` ADD `items` text DEFAULT '[]' NOT NULL;

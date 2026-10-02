@@ -1,6 +1,8 @@
 import { useEffect, useState } from 'react';
 import { useNavigate, useSearch } from '@tanstack/react-router';
 import {
+  Briefcase,
+  FileUp,
   FolderOpen,
   HardDrive,
   Info,
@@ -23,8 +25,18 @@ import { applyTheme } from '@/hooks/theme';
 import { desktop, modKey } from '@/lib/desktop';
 import { BackupsSettings } from './BackupsPanel';
 import { TagsManager } from './TagsManager';
+import { WorkSettings } from './WorkSettings';
+import { ImportWizard } from './ImportWizard';
 
-export const SETTINGS_TABS = ['perfil', 'preferencias', 'etiquetas', 'copias', 'acerca'] as const;
+export const SETTINGS_TABS = [
+  'perfil',
+  'preferencias',
+  'trabajo',
+  'etiquetas',
+  'importar',
+  'copias',
+  'acerca',
+] as const;
 export type SettingsTab = (typeof SETTINGS_TABS)[number];
 
 function ProfileForm({ initial }: { initial: Settings['profile'] }) {
@@ -275,8 +287,14 @@ export function SettingsPage() {
           <TabsTrigger value="preferencias">
             <SlidersHorizontal /> Preferencias
           </TabsTrigger>
+          <TabsTrigger value="trabajo">
+            <Briefcase /> Trabajo
+          </TabsTrigger>
           <TabsTrigger value="etiquetas">
             <Tag /> Etiquetas
+          </TabsTrigger>
+          <TabsTrigger value="importar">
+            <FileUp /> Importar
           </TabsTrigger>
           <TabsTrigger value="copias" data-testid="tab-copias">
             <HardDrive /> Copias de seguridad
@@ -297,6 +315,9 @@ export function SettingsPage() {
         ) : (
           <Spinner className="mt-4" />
         )}
+        <TabsContent value="trabajo">
+          <WorkSettings />
+        </TabsContent>
         <TabsContent value="etiquetas">
           <Card>
             <CardHeader>
@@ -307,6 +328,9 @@ export function SettingsPage() {
               <TagsManager />
             </CardContent>
           </Card>
+        </TabsContent>
+        <TabsContent value="importar">
+          <ImportWizard />
         </TabsContent>
         <TabsContent value="copias">
           <BackupsSettings />

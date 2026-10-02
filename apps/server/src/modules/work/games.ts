@@ -61,6 +61,20 @@ export function listGames(ctx: AppContext): Game[] {
   ).map((r) => decodeRow<Game>(GAME_COLUMNS, r));
 }
 
+export function createGame(ctx: AppContext, raw: unknown): Game {
+  const input = parse(gameInputSchema, raw);
+  const id = insertRow(ctx, 'games', GAME_COLUMNS, input);
+  const game = getGame(ctx, id);
+  indexGame(ctx, game);
+  logActivity(ctx, {
+    entityType: 'game',
+    entityId: id,
+    action: 'crear',
+    summary: `Juego «${game.title}» añadido`,
+  });
+  return game;
+}
+
 export function registerGameEntity(): void {
   registerTrashable({
     type: 'game',
