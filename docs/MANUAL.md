@@ -164,6 +164,44 @@ En la ficha de cada juego:
 3. Todo queda dentro de una página «Importación de Notion · fecha» con la misma jerarquía; las imágenes y archivos pasan a ser adjuntos y cada base de datos se convierte en una tabla. Arrastra las páginas donde quieras.
 4. Si algo no ha salido bien, deshaz la importación entera en «Importaciones anteriores».
 
+## Corpus de videojuegos
+
+### Catálogo y fichas
+
+- En **Corpus → Juegos**, **Añadir juego** incorpora al corpus un juego que ya exista en la app. Cada juego tiene su **ficha de corpus**: fase de construcción (identificado → texto obtenido → limpieza → alineación → revisión → anotación → incluido), versión del juego, fecha del texto, método de obtención, idiomas, dirección de traducción (directa KO→ES, a través del inglés o desconocida), empresa de localización, derechos y notas metodológicas.
+- **Uso restringido:** marca así el material bajo NDA o sin permiso; no se incluye en las exportaciones ni en las versiones salvo que lo pidas en los filtros. Ningún texto de tus encargos entra en el corpus de forma automática.
+
+### Importar textos
+
+1. En la ficha de corpus del juego, **Importar textos** y elige un Excel o CSV con una columna por idioma.
+2. La app propone el uso de cada columna (coreano, español, inglés, ID de cadena, hablante, contexto…). Si el archivo no tiene cabeceras, la columna A es el coreano y la B el español.
+3. Decide qué hacer con las etiquetas de formato (`<color>`, `[b]`…) y con las variables (`{0}`, `%s`, `$NAME$`…): conservarlas, quitarlas o sustituir las variables por ⟨VAR⟩. El texto se normaliza (NFC), y «\n» escrito se puede convertir en salto de línea.
+4. Al terminar verás cuántas filas estaban vacías, desalineadas (les falta algún idioma) o repetidas. La importación se puede deshacer en **Ajustes → Importar**.
+
+En el documento puedes corregir cualquier segmento (lápiz) o eliminarlo.
+
+### Concordancias
+
+- Escribe lo que buscas y elige el modo: **contiene** (sin distinguir mayúsculas ni tildes), **palabra completa**, **empieza por** (útil con las partículas coreanas: «마법사» encuentra «마법사가»), **comodines** (`*` y `?`) o **expresión regular**.
+- **Condiciones combinadas:** añade condiciones en otros idiomas y marca «Excluir» para descartar segmentos. Por ejemplo: coreano contiene «스킬» y, excluyendo, español contiene «habilidad».
+- **Filtros:** juego, género, plataforma, año, tipo de texto, dirección de traducción, hablante y etiquetas de anotación.
+- Los resultados se muestran en formato KWIC con la traducción debajo. Ordénalos por el contexto izquierdo o derecho, pulsa una línea para ver el segmento completo, anotar la coincidencia o abrirla en su documento, y exporta todas las coincidencias a Excel. Las búsquedas se pueden guardar.
+- Con 3 o más caracteres la búsqueda usa el índice y es inmediata; las de 1 o 2 sílabas (frecuentes en coreano) también funcionan, pero tardan algo más en corpus muy grandes.
+
+### Anotación
+
+- Selecciona un fragmento de texto en un documento (o pulsa **Anotar la coincidencia** en el concordanciador) y elige una etiqueta; puedes añadir un comentario. El rotulador de cada fila anota el segmento entero.
+- El **esquema de anotación** (técnicas de traducción, honoríficos y tratamiento, humor, referencias culturales, nombres propios, variación lingüística…) se edita en **Corpus → Esquema de anotación**: añade subetiquetas, cambia nombres y colores. Filtrar por una etiqueta incluye sus subetiquetas.
+
+### Estadísticas
+
+Número de juegos, documentos, segmentos y anotaciones; por idioma, caracteres (sin espacios), **eojeol** en coreano y palabras en el resto, formas distintas y media por segmento; distribución por tipo de texto, género, plataforma, año, fase y dirección; y **lista de frecuencias** (con o sin palabras vacías) exportable a CSV. Todo se puede calcular sobre un subcorpus filtrado.
+
+### Exportar y versiones
+
+- **Exportar:** TMX, TXT por idioma (un segmento por línea, también un archivo por juego, para AntConc, Sketch Engine o LancsBox), Excel, CSV o JSON, del corpus completo o de un subcorpus.
+- **Versiones:** fija el estado del corpus en una fecha («v0.3»). Cada versión guarda un ZIP con TMX, TXT, CSV y un manifiesto, y te da el texto para citarla en tus artículos.
+
 ## Importar desde ClickUp, Google Sheets o Excel
 
 En **Ajustes → Importar**:

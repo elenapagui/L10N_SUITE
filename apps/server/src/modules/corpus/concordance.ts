@@ -154,7 +154,7 @@ function enrich(ctx: AppContext, page: RawHit[], lang: string): ConcordanceHit[]
     const chunk = ids.slice(i, i + 500);
     const rows = ctx.sqlite
       .prepare(
-        `SELECT s.id, s.string_id AS stringId, s.speaker, coalesce(s.text_type, d.text_type) AS textType,
+        `SELECT s.id, s.position, s.string_id AS stringId, s.speaker, coalesce(s.text_type, d.text_type) AS textType,
            d.id AS documentId, d.title AS documentTitle, g.id AS gameId, g.title AS gameTitle,
            (SELECT COUNT(*) FROM annotations a WHERE a.segment_id = s.id) AS annotationCount
          FROM segments s JOIN corpus_documents d ON d.id = s.document_id JOIN games g ON g.id = d.game_id
@@ -180,6 +180,7 @@ function enrich(ctx: AppContext, page: RawHit[], lang: string): ConcordanceHit[]
       gameTitle: m.gameTitle as string,
       documentId: m.documentId as string,
       documentTitle: m.documentTitle as string,
+      position: m.position as number,
       stringId: (m.stringId as string | null) ?? null,
       speaker: (m.speaker as string | null) ?? null,
       textType: m.textType as string,

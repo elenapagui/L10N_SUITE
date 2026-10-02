@@ -8,6 +8,10 @@ import { AppShell } from '@/components/layout/AppShell';
 import { ComingSoon } from '@/components/layout/ComingSoon';
 import { NotFound, RouteError } from '@/components/layout/RouteError';
 import { CalendarPage } from '@/features/calendar/CalendarPage';
+import { ConcordancerPage } from '@/features/corpus/ConcordancerPage';
+import { CorpusGamePage } from '@/features/corpus/CorpusGamePage';
+import { CorpusPage } from '@/features/corpus/CorpusPage';
+import { DocumentPage } from '@/features/corpus/DocumentPage';
 import { ExpensesPage } from '@/features/finance/ExpensesPage';
 import { InvoicesPage } from '@/features/finance/InvoicesPage';
 import { ReportsPage } from '@/features/finance/ReportsPage';
@@ -159,6 +163,33 @@ const resourceRoute = createRoute({
   component: ResourceRedirect,
 });
 
+const corpusRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: '/corpus',
+  validateSearch: (search: Record<string, unknown>): { tab?: string } =>
+    typeof search.tab === 'string' ? { tab: search.tab } : {},
+  component: CorpusPage,
+});
+const corpusGameRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: '/corpus/juegos/$gameId',
+  component: CorpusGamePage,
+});
+const corpusDocumentRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: '/corpus/documentos/$documentId',
+  validateSearch: (search: Record<string, unknown>): { pos?: number } => {
+    const pos = Number(search.pos);
+    return Number.isInteger(pos) && pos > 0 ? { pos } : {};
+  },
+  component: DocumentPage,
+});
+const concordanceRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: '/corpus/concordancias',
+  component: ConcordancerPage,
+});
+
 const routes = [
   homeRoute,
   settingsRoute,
@@ -183,6 +214,10 @@ const routes = [
   tablesRoute,
   tableRoute,
   resourceRoute,
+  corpusRoute,
+  corpusGameRoute,
+  corpusDocumentRoute,
+  concordanceRoute,
 ];
 
 /** Secciones de fases futuras: se muestran como «en construcción». */

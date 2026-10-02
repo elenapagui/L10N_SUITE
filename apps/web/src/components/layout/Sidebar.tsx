@@ -1,12 +1,24 @@
 import { Link, useRouterState } from '@tanstack/react-router';
 import { PanelLeft } from 'lucide-react';
-import { NAV_FOOTER, NAV_SECTIONS, AVAILABLE_PHASE, type NavItem } from '@/lib/navigation';
+import {
+  ALL_NAV_ITEMS,
+  NAV_FOOTER,
+  NAV_SECTIONS,
+  AVAILABLE_PHASE,
+  type NavItem,
+} from '@/lib/navigation';
 import { cn } from '@/lib/utils';
 import { Tooltip } from '@/components/ui/misc';
 
-function isActive(pathname: string, to: string): boolean {
+function matches(pathname: string, to: string): boolean {
   if (to === '/') return pathname === '/';
   return pathname === to || pathname.startsWith(`${to}/`);
+}
+
+/** Solo se marca la entrada más específica («Concordancias» y no también «Corpus»). */
+function isActive(pathname: string, to: string): boolean {
+  if (!matches(pathname, to)) return false;
+  return !ALL_NAV_ITEMS.some((i) => i.to.length > to.length && matches(pathname, i.to));
 }
 
 function NavLink({

@@ -54,6 +54,15 @@ const WORK_KEYS = [
   'tables',
   'glossary',
   'characters',
+  'corpus-profiles',
+  'corpus-profile',
+  'corpus-documents',
+  'corpus-document',
+  'corpus-segments',
+  'corpus-tags',
+  'corpus-stats',
+  'corpus-frequencies',
+  'corpus-versions',
 ];
 
 export function useInvalidateWork() {

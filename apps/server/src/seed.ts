@@ -6,6 +6,7 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { addDaysISO, todayISO } from '@l10n/shared';
 import { buildApp } from './app';
+import { commitCorpusImport, previewCorpusFile } from './modules/corpus/import';
 
 const serverRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const repoRoot = path.resolve(serverRoot, '..', '..');
@@ -508,6 +509,123 @@ await post(`/api/tables/${market.id}/rows`, {
     },
   ],
 });
+
+// Corpus: diálogos e interfaz de dos juegos.
+const dialogues = [
+  ['ID', 'Hablante', 'Coreano', 'Español'],
+  [
+    'EVT_001',
+    '서연',
+    '어서 와, 모험가님! 단풍 축제에 온 걸 환영해.',
+    '¡Bienvenida, aventurera! Te doy la bienvenida al festival del arce.',
+  ],
+  [
+    'EVT_002',
+    '서연',
+    '마법사가 되고 싶다고? 그럼 먼저 스킬을 배워야 해.',
+    '¿Quieres ser hechicera? Primero tendrás que aprender una habilidad.',
+  ],
+  [
+    'EVT_003',
+    '장로 무혁',
+    '젊은이여, 던전의 문이 열렸소.',
+    'Joven, las puertas de la mazmorra se han abierto.',
+  ],
+  ['EVT_004', '장로 무혁', '그대의 검에 축복이 있기를.', 'Que tu espada esté bendecida.'],
+  [
+    'EVT_005',
+    '서연',
+    '헐, 진짜? 보스를 혼자 잡았다고?',
+    '¿En serio? ¿Has derrotado al jefe tú sola?',
+  ],
+  [
+    'EVT_006',
+    '서연',
+    '물약 좀 챙겨 가. 던전은 위험하니까.',
+    'Llévate unas pociones. La mazmorra es peligrosa.',
+  ],
+  [
+    'EVT_007',
+    '상인',
+    '가챠 티켓 10장에 단돈 3,000골드!',
+    '¡Diez billetes de invocación por solo 3000 de oro!',
+  ],
+  [
+    'EVT_008',
+    '장로 무혁',
+    '마법사의 길은 멀고도 험하오.',
+    'La senda del hechicero es larga y ardua.',
+  ],
+  ['EVT_009', '서연', '{0}님, 길드에 가입했어요?', '{0}, ¿te has unido al clan?'],
+  ['EVT_010', '서연', '와, 대박! 레벨 업 했어!', '¡Hala, qué pasada! ¡Has subido de nivel!'],
+  ['EVT_011', '상인', '어서 오세요, 손님. 무엇을 찾으세요?', 'Bienvenido, cliente. ¿Qué busca?'],
+  ['EVT_012', '장로 무혁', '흑마법사들이 마을을 노리고 있소.', 'Los nigromantes acechan la aldea.'],
+];
+const ui = [
+  ['키보드 설정', 'Configuración del teclado'],
+  ['스킬 트리', 'Árbol de habilidades'],
+  ['마법 부스터', 'Turbo mágico'],
+  ['출발', 'Salida'],
+  ['일시 정지', 'Pausa'],
+  ['던전 입장', 'Entrar en la mazmorra'],
+];
+const toCsv = (rows: string[][]) =>
+  rows.map((r) => r.map((c) => `"${c.replace(/"/g, '""')}"`).join(',')).join('\n');
+for (const [gameId, title, rows, textType] of [
+  [aether.id, 'Evento de otoño — diálogos', dialogues, 'dialogue'],
+  [neon.id, 'Interfaz', ui, 'ui'],
+] as const) {
+  const preview = await previewCorpusFile(
+    `${title}.csv`,
+    Buffer.from(toCsv(rows as unknown as string[][])),
+  );
+  commitCorpusImport(app.ctx, {
+    token: preview.token,
+    gameId,
+    title,
+    textType,
+    languages: preview.suggested.languages,
+    stringId: preview.suggested.stringId,
+    speaker: preview.suggested.speaker,
+    headerIsData: preview.headerIsData,
+  });
+}
+await app.inject({
+  method: 'PUT',
+  url: `/api/corpus/profiles/${aether.id}`,
+  payload: {
+    phase: 'annotation',
+    translationDirection: 'direct',
+    gameVersion: '2.4',
+    localizationCompany: 'Hangul Localization Studio',
+    rights: 'research',
+  },
+});
+await app.inject({
+  method: 'PUT',
+  url: `/api/corpus/profiles/${neon.id}`,
+  payload: { phase: 'alignment', translationDirection: 'pivot_en' },
+});
+{
+  const hits = (
+    await app.inject({
+      method: 'POST',
+      url: '/api/corpus/concordance',
+      payload: { conditions: [{ lang: 'ko', query: '모험가님' }] },
+    })
+  ).json() as { hits: { segmentId: number; start: number; end: number }[] };
+  const h = hits.hits[0];
+  if (h) {
+    await post('/api/corpus/annotations', {
+      segmentId: h.segmentId,
+      tagId: 'atag-hon-suffix',
+      lang: 'ko',
+      start: h.start + 3,
+      end: h.end,
+      comment: '«-님» se pierde: tratamiento de tú en el evento',
+    });
+  }
+}
 
 for (const [name, color] of [
   ['Urgente', '#ef4444'],

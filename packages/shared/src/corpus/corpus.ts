@@ -295,6 +295,8 @@ export interface ConcordanceHit {
   gameTitle: string;
   documentId: string;
   documentTitle: string;
+  /** Posición del segmento en su documento (para abrirlo ahí). */
+  position: number;
   stringId: string | null;
   speaker: string | null;
   textType: string;
