@@ -233,7 +233,14 @@ async function runSelfTest(win: BrowserWindow): Promise<void> {
     }
     log('[autocomprobación] CORRECTA');
     await engine.stop();
-    fs.rmSync(dataDir, { recursive: true, force: true });
+    try {
+      // En Windows los archivos recién cerrados pueden seguir bloqueados unos instantes.
+      fs.rmSync(dataDir, { recursive: true, force: true, maxRetries: 10, retryDelay: 200 });
+    } catch (error) {
+      log(
+        `[autocomprobación] no se ha podido borrar la carpeta temporal: ${(error as Error).message}`,
+      );
+    }
     app.exit(0);
   } catch (error) {
     log(`[autocomprobación] FALLIDA: ${(error as Error).message} ${engine.lastFatal ?? ''}`);

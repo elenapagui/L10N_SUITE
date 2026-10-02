@@ -297,6 +297,9 @@ export interface Dashboard {
   secondsToday: number;
   deliveredThisMonthCents: number;
   pendingBillingCents: number;
+  /** Facturas emitidas pendientes de cobro (en la moneda principal). */
+  pendingCollectionCents: number;
+  overdueInvoiceCount: number;
   baseCurrency: string;
 }
 

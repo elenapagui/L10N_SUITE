@@ -36,6 +36,13 @@
       "when": 1790957420963,
       "tag": "0004_importaciones",
       "breakpoints": true
+    },
+    {
+      "idx": 5,
+      "version": "6",
+      "when": 1790957942664,
+      "tag": "0005_finanzas",
+      "breakpoints": true
     }
   ]
 }

@@ -13,6 +13,8 @@ import { registerQueryEntity } from './modules/work/queries';
 import { registerTaskEntities } from './modules/work/tasks';
 import { registerTemplateEntity } from './modules/work/templates';
 import { registerTimeEntity } from './modules/work/time';
+import { registerInvoiceEntity } from './modules/finance/invoices';
+import { registerExpenseEntity } from './modules/finance/expenses';
 
 /** Registra en la papelera, la búsqueda, etc. todos los tipos de ficha de los módulos. */
 export function registerEntities(): void {
@@ -26,6 +28,8 @@ export function registerEntities(): void {
   registerTimeEntity();
   registerQueryEntity();
   registerTemplateEntity();
+  registerInvoiceEntity();
+  registerExpenseEntity();
 }
 
 /**

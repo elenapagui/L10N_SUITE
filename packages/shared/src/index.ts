@@ -12,3 +12,4 @@ export * from './work/recurrence';
 export * from './work/schemas';
 export * from './work/types';
 export * from './import';
+export * from './finance/finance';

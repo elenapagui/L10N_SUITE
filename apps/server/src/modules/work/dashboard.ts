@@ -58,8 +58,17 @@ export function buildDashboard(ctx: AppContext): Dashboard {
       )
       .get() as { n: number }
   ).n;
+  const collection = ctx.sqlite
+    .prepare(
+      `SELECT COALESCE(SUM(ROUND(total_cents * exchange_rate)), 0) AS pending,
+              COALESCE(SUM(CASE WHEN due_date < ? THEN 1 ELSE 0 END), 0) AS overdue
+       FROM invoices WHERE deleted_at IS NULL AND status = 'issued'`,
+    )
+    .get(today) as { pending: number; overdue: number };
   return {
     today,
+    pendingCollectionCents: collection.pending,
+    overdueInvoiceCount: collection.overdue,
     tasksToday: listTasks(ctx, { due: 'today', includeDone: false, limit: 50 }),
     tasksOverdue: listTasks(ctx, { due: 'overdue', limit: 50 }),
     upcomingJobs: listJobs(ctx, { open: true, dueFrom: today, dueTo: addDaysISO(today, 7) }),
@@ -130,6 +139,20 @@ export function pendingReminders(ctx: AppContext): Reminder[] {
         route: `/trabajo/encargos/${j.id}`,
       });
     }
+  }
+  const overdueInvoices = ctx.sqlite
+    .prepare(
+      `SELECT i.id, i.number, i.due_date AS dueDate, c.name AS clientName FROM invoices i LEFT JOIN clients c ON c.id = i.client_id
+       WHERE i.deleted_at IS NULL AND i.status = 'issued' AND i.due_date < ?`,
+    )
+    .all(today) as { id: string; number: string; dueDate: string; clientName: string | null }[];
+  for (const inv of overdueInvoices) {
+    reminders.push({
+      key: `invoice:${inv.id}:${today.slice(0, 7)}`,
+      title: 'Cobro atrasado',
+      body: `La factura ${inv.number}${inv.clientName ? ` (${inv.clientName})` : ''} vencía el ${formatDateES(inv.dueDate)}.`,
+      route: '/finanzas/facturas',
+    });
   }
   const dueTasks = listTasks(ctx, { due: 'today_or_overdue', limit: 50 });
   if (dueTasks.length > 0) {
