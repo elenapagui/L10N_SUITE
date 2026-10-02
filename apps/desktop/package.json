@@ -1,0 +1,19 @@
+{
+  "name": "@l10n/desktop",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "stage": "node scripts/stage.mjs",
+    "dev": "node scripts/stage.mjs --skip-web && electron build/app",
+    "selftest": "node scripts/stage.mjs && electron build/app --selftest",
+    "dist": "node scripts/stage.mjs && electron-builder --config electron-builder.yml"
+  },
+  "devDependencies": {
+    "@l10n/server": "*",
+    "@l10n/shared": "*",
+    "electron": "44.5.1",
+    "electron-builder": "26.15.3",
+    "esbuild": "0.28.2"
+  }
+}

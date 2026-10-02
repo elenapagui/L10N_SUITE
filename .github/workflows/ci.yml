@@ -1,0 +1,51 @@
+name: CI
+
+on:
+  push:
+    branches: ['**']
+  pull_request:
+  workflow_dispatch:
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  comprobaciones:
+    name: Lint, tipos, pruebas y e2e
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-node@v5
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - name: Lint
+        run: npm run lint
+      - name: Formato
+        run: npm run format:check
+      - name: Tipos
+        run: npm run typecheck
+      - name: Pruebas unitarias y de integración
+        run: npm test
+      - name: Compilar la interfaz
+        run: npm run build -w @l10n/web
+      - name: Instalar Chromium para Playwright
+        run: npx playwright install --with-deps chromium
+      - name: Pruebas de extremo a extremo
+        run: npm run test:e2e
+      - name: Autocomprobación de la app de escritorio (Linux)
+        env:
+          L10N_DISABLE_GPU: '1'
+        run: |
+          node apps/desktop/scripts/stage.mjs --skip-web
+          xvfb-run -a npx electron apps/desktop/build/app --selftest --no-sandbox
+      - name: Informe de Playwright
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: playwright-report
+          path: playwright-report
+          retention-days: 7

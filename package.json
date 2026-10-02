@@ -1,0 +1,45 @@
+{
+  "name": "l10n-suite",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Espacio de trabajo de escritorio para la traducción de videojuegos, la investigación académica y el corpus.",
+  "type": "module",
+  "workspaces": [
+    "packages/*",
+    "apps/*"
+  ],
+  "engines": {
+    "node": ">=22.12"
+  },
+  "scripts": {
+    "dev": "concurrently -k -n motor,web -c blue,magenta \"npm run dev -w @l10n/server\" \"npm run dev -w @l10n/web\"",
+    "build": "npm run build -w @l10n/web && npm run build -w @l10n/server",
+    "start": "node apps/server/dist/index.js",
+    "seed": "npm run seed -w @l10n/server",
+    "typecheck": "tsc -p packages/shared && tsc -p apps/server && tsc -p apps/web && tsc -p apps/desktop && tsc -p e2e",
+    "lint": "eslint .",
+    "format": "prettier --write .",
+    "format:check": "prettier --check .",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "test:e2e": "playwright test",
+    "db:generate": "npm run db:generate -w @l10n/server",
+    "desktop:stage": "npm run stage -w @l10n/desktop",
+    "desktop:dev": "npm run dev -w @l10n/desktop",
+    "desktop:selftest": "npm run selftest -w @l10n/desktop",
+    "desktop:dist": "npm run dist -w @l10n/desktop"
+  },
+  "devDependencies": {
+    "@eslint/js": "10.0.1",
+    "@playwright/test": "1.56.1",
+    "@types/node": "22.20.5",
+    "concurrently": "10.0.5",
+    "eslint": "10.11.0",
+    "eslint-plugin-react-hooks": "7.1.1",
+    "globals": "17.13.0",
+    "prettier": "3.9.9",
+    "typescript": "6.0.3",
+    "typescript-eslint": "8.71.0",
+    "vitest": "5.0.3"
+  }
+}

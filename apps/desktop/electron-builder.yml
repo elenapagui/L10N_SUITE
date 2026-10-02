@@ -1,0 +1,58 @@
+# Configuración de los instaladores de L10N Suite.
+appId: com.elenapagui.l10nsuite
+productName: L10N Suite
+copyright: Copyright © 2026
+directories:
+  app: build/app
+  output: release
+  buildResources: resources
+asar: true
+asarUnpack:
+  - 'node_modules/better-sqlite3/**'
+files:
+  - '**/*'
+  - '!**/*.map'
+  - '!node_modules/better-sqlite3/deps/**'
+  - '!node_modules/better-sqlite3/src/**'
+# better-sqlite3 usa N-API con binarios precompilados: no hay nada que recompilar.
+npmRebuild: false
+electronLanguages:
+  - es
+  - en-US
+win:
+  target:
+    - target: nsis
+      arch: [x64]
+  icon: resources/icon.png
+  artifactName: L10N-Suite-${version}-Windows-x64.${ext}
+nsis:
+  oneClick: false
+  perMachine: false
+  allowToChangeInstallationDirectory: true
+  createDesktopShortcut: true
+  createStartMenuShortcut: true
+  shortcutName: L10N Suite
+  deleteAppDataOnUninstall: false
+  installerLanguages: [es_ES]
+  language: '3082'
+mac:
+  target:
+    - target: dmg
+      arch: [arm64]
+  icon: resources/icon.png
+  category: public.app-category.productivity
+  # Firma ad hoc (sin certificado de Apple): imprescindible en Apple Silicon.
+  identity: '-'
+  hardenedRuntime: false
+  gatekeeperAssess: false
+  artifactName: L10N-Suite-${version}-macOS-arm64.${ext}
+dmg:
+  title: L10N Suite ${version}
+linux:
+  target:
+    - target: AppImage
+      arch: [x64]
+  icon: resources/icon.png
+  category: Office
+  artifactName: L10N-Suite-${version}-Linux-x64.${ext}
+publish: null

@@ -1,0 +1,36 @@
+{
+  "name": "@l10n/server",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "exports": {
+    ".": "./src/app.ts",
+    "./app": "./src/app.ts"
+  },
+  "scripts": {
+    "dev": "tsx watch --clear-screen=false src/index.ts",
+    "build": "node scripts/build.mjs",
+    "seed": "tsx src/seed.ts",
+    "db:generate": "drizzle-kit generate"
+  },
+  "dependencies": {
+    "@fastify/multipart": "10.1.2",
+    "@fastify/static": "10.1.5",
+    "@l10n/shared": "*",
+    "better-sqlite3": "13.0.3",
+    "drizzle-orm": "0.45.3",
+    "fastify": "5.12.5",
+    "uuidv7": "1.2.1",
+    "yauzl": "3.4.0",
+    "yazl": "3.3.1",
+    "zod": "4.6.5"
+  },
+  "devDependencies": {
+    "@types/better-sqlite3": "9.6.0",
+    "@types/yauzl": "3.4.0",
+    "@types/yazl": "3.3.1",
+    "drizzle-kit": "0.31.11",
+    "esbuild": "0.28.2",
+    "tsx": "4.23.15"
+  }
+}
