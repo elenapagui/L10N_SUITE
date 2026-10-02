@@ -43,16 +43,22 @@ export class AppContext {
   open(): void {
     try {
       const { sqlite, db } = openDatabase(this.config.dbPath);
-      this.sqlite = sqlite;
-      this.db = db;
-      this.integrity = checkIntegrity(sqlite) ? 'ok' : 'error';
+      if (checkIntegrity(sqlite)) {
+        this.sqlite = sqlite;
+        this.db = db;
+        this.integrity = 'ok';
+        return;
+      }
+      // No se deja abierto el archivo dañado: así se puede sustituir al restaurar una copia.
+      sqlite.close();
+      this.logger.error({}, 'La base de datos no supera la comprobación de integridad');
     } catch (error) {
       this.logger.error({ err: error }, 'No se ha podido abrir la base de datos');
-      const { sqlite, db } = openDatabase(':memory:');
-      this.sqlite = sqlite;
-      this.db = db;
-      this.integrity = 'error';
     }
+    const { sqlite, db } = openDatabase(':memory:');
+    this.sqlite = sqlite;
+    this.db = db;
+    this.integrity = 'error';
   }
 
   close(): void {

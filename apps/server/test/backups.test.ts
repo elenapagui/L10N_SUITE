@@ -247,15 +247,42 @@ describe('arranque', () => {
     expect((await again.app.inject('/api/tags')).json()).toHaveLength(1);
   });
 
-  it('entra en modo recuperación si la base de datos está dañada', async () => {
+  it('entra en modo recuperación si la base de datos está dañada y permite restaurar una copia', async () => {
     const t = await open();
+    const custom = tempDir('l10n-copias-nube-');
+    await t.app.inject({
+      method: 'PUT',
+      url: '/api/settings/backups',
+      payload: { directory: custom },
+    });
+    await t.app.inject({
+      method: 'POST',
+      url: '/api/tags',
+      payload: { name: 'Antes del desastre' },
+    });
+    const backup = (await t.app.inject({ method: 'POST', url: '/api/backups' })).json();
     await t.close();
     const dbPath = path.join(t.dataDir, 'datos', 'l10n.db');
     fs.rmSync(`${dbPath}-wal`, { force: true });
     fs.rmSync(`${dbPath}-shm`, { force: true });
     fs.writeFileSync(dbPath, Buffer.alloc(8192, 7));
+
     const broken = await open({ dataDir: t.dataDir });
-    const info = (await broken.app.inject('/api/app-info')).json();
-    expect(info.integrity).toBe('error');
+    expect((await broken.app.inject('/api/app-info')).json().integrity).toBe('error');
+    // El archivo dañado no queda bloqueado (imprescindible en Windows) y se puede restaurar la copia.
+    const list = (await broken.app.inject('/api/backups')).json();
+    expect(list.items.map((b: { fileName: string }) => b.fileName)).toContain(backup.fileName);
+    const restored = await broken.app.inject({
+      method: 'POST',
+      url: '/api/backups/restore',
+      payload: { fileName: backup.fileName },
+    });
+    expect(restored.statusCode, restored.body).toBe(200);
+    expect((await broken.app.inject('/api/app-info')).json().integrity).toBe('ok');
+    expect(
+      (await broken.app.inject('/api/tags')).json().map((x: { name: string }) => x.name),
+    ).toEqual(['Antes del desastre']);
+    expect(list.directory).toBe(custom);
+    removeDir(custom);
   });
 });

@@ -21,7 +21,7 @@ export async function systemRoutes(app: FastifyInstance) {
     schemaVersion: ctx.integrity === 'ok' ? ctx.schemaVersion() : 0,
     dataDir: ctx.config.dataDir,
     dbPath: ctx.config.dbPath,
-    backupsDir: ctx.integrity === 'ok' ? backupsDir(ctx) : ctx.config.defaultBackupsDir,
+    backupsDir: backupsDir(ctx),
     desktop: ctx.config.desktop,
     integrity: ctx.integrity,
     startedAt: ctx.startedAt,

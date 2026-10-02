@@ -10,7 +10,7 @@ import Database from 'better-sqlite3';
 import { NotFoundError, ValidationError } from '../../lib/errors';
 import { ensureDir, isInside, removeIfExists } from '../../lib/fs';
 import { newId } from '../../lib/ids';
-import { getSettings } from '../settings';
+import { getSettings, readBackupDirFallback } from '../settings';
 import { selectBackupsToDelete } from './rotation';
 
 const KINDS: BackupKind[] = [
@@ -26,7 +26,8 @@ const NAME_RE =
 export const AUTO_BACKUP_INTERVAL_MS = 24 * 60 * 60 * 1000;
 
 export function backupsDir(ctx: AppContext): string {
-  const configured = getSettings(ctx).backups.directory;
+  const configured =
+    ctx.integrity === 'ok' ? getSettings(ctx).backups.directory : readBackupDirFallback(ctx);
   return ensureDir(
     configured && configured.trim() !== '' ? configured : ctx.config.defaultBackupsDir,
   );

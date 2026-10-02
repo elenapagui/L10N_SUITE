@@ -4,8 +4,30 @@ import {
   type Settings,
   type SettingsSection,
 } from '@l10n/shared';
+import fs from 'node:fs';
+import path from 'node:path';
 import type { AppContext } from '../context';
+import { writeFileAtomic } from '../lib/fs';
 import { parse } from '../lib/validate';
+
+/**
+ * La carpeta de copias se guarda también fuera de la base de datos: si esta se daña,
+ * el modo recuperación tiene que saber dónde buscar las copias.
+ */
+function backupPrefsFile(ctx: AppContext): string {
+  return path.join(ctx.config.dataDir, 'copias-ajustes.json');
+}
+
+export function readBackupDirFallback(ctx: AppContext): string | null {
+  try {
+    const data = JSON.parse(fs.readFileSync(backupPrefsFile(ctx), 'utf8')) as {
+      directory?: string | null;
+    };
+    return data.directory ?? null;
+  } catch {
+    return null;
+  }
+}
 
 export function getSettings(ctx: AppContext): Settings {
   const raw: Record<string, unknown> = {};
@@ -47,5 +69,11 @@ export function updateSettingsSection<S extends SettingsSection>(
        ON CONFLICT(key) DO UPDATE SET value = excluded.value, updated_at = excluded.updated_at`,
     )
     .run(section, JSON.stringify(next), ctx.nowISO());
+  if (section === 'backups') {
+    writeFileAtomic(
+      backupPrefsFile(ctx),
+      JSON.stringify({ directory: (next as Settings['backups']).directory }),
+    );
+  }
   return next;
 }
