@@ -21,6 +21,8 @@ export const preferenceSettingsSchema = z.object({
   defaultSourceLang: z.string().min(2).max(8).default('ko'),
   defaultTargetLang: z.string().min(2).max(8).default('es'),
   notifications: z.boolean().default(true),
+  /** Tipos de cambio aproximados para las previsiones: 1 unidad de la moneda = X de la principal. */
+  fxRates: z.record(z.string().length(3), z.number().positive().max(1_000_000)).default({}),
 });
 
 export const backupSettingsSchema = z.object({

@@ -80,9 +80,10 @@ Lo que borras va a la **Papelera**, donde se guarda 30 días. Justo después de 
 
 - **Clientes:** datos fiscales, condiciones (moneda, plazo de pago, IVA, IRPF), contactos, NDA, plataforma del cliente y **tarifas**. En «Datos» puedes ajustar la **rejilla de coincidencias del CAT**, es decir, cuánto paga el cliente por cada banda (100 %, 95–99 %…).
 - **Juegos:** la ficha central del juego (títulos KO/ES/EN, desarrolladora, géneros, plataformas, modelo de negocio…). Desde ella ves sus proyectos, encargos y tareas.
-- **Proyectos:** reúnen cliente, juego y par de idiomas. Puedes asociarles una carpeta del ordenador y abrirla con un clic.
+- **Proyectos:** reúnen cliente, juego y par de idiomas (coreano, español o inglés). Puedes asociarles una carpeta del ordenador y abrirla con un clic. Si cambias el cliente o los idiomas, la app te propone poner la tarifa nueva en los encargos que aún no has facturado.
 - **Encargos (lotes):** cada parche, evento, DLC o ficha de tienda. Al crearlo:
-  - se aplica sola la tarifa del cliente que coincida en servicio, unidad e idiomas, y si no hay, la general de **Ajustes → Trabajo**;
+  - al elegir el servicio (traducción, revisión, LQA…), la app busca la tarifa del cliente para ese servicio y ese par de idiomas y rellena **la unidad y la tarifa**: por ejemplo, 0,035 $/carácter. Si el cliente no tiene, usa la general de **Ajustes → Trabajo**. Debajo verás de dónde sale («Tarifa de Hangul Studio para traducción KO→ES») o un enlace para añadirla si no hay ninguna. Puedes cambiarla a mano;
+  - en la ficha del encargo, si cambias el servicio o la unidad, la tarifa se actualiza sola, salvo que la hubieras puesto a mano. Si la tarifa del encargo no es la vigente, el botón **Aplicar** la pone. Los encargos ya facturados o con importe fijado a mano no se tocan;
   - con **Análisis por coincidencias** introduces el recuento por bandas o lo pegas desde Excel o desde el informe del CAT; la app calcula el volumen ponderado y el importe;
   - puedes fijar el importe a mano;
   - la plantilla «Encargo estándar» crea las tareas habituales (traducir, consultas, QA con checklist, entregar, registrar para facturar) con fechas relativas a la entrega.
@@ -112,6 +113,13 @@ La app **no emite facturas**: las emites con tu programa de facturación (o tu g
   - **Registrar factura** guarda el número, la fecha, los encargos incluidos y otros conceptos (recargos, gestión de terminología…). El IVA, el IRPF y el vencimiento salen de la ficha del cliente o, si no los tiene, de **Ajustes**. Si la moneda no es la principal, indica el tipo de cambio que aplicas.
 - **Facturación → Facturas:** al abrir una factura puedes marcarla como cobrada (con la fecha de cobro), adjuntar su PDF, descargar el resumen o anularla. Al anularla, sus encargos vuelven a «Por facturar». Las facturas vencidas aparecen en rojo, en el inicio y como aviso.
 - **Gastos:** concepto, fecha, proveedor, categoría, base, IVA soportado y si es deducible. Después de guardar puedes adjuntar el justificante.
+- **Informes → Previsión de cobros:** lo que esperas cobrar a partir de hoy (con IVA e IRPF):
+  - lo **vencido sin cobrar**, lo que entrará en los **próximos 30 días** y el total pendiente;
+  - un gráfico por mes con las facturas emitidas (en su vencimiento) y los encargos aún sin facturar. Para estos, la app supone que los facturas a fin del mes de entrega y que el cliente paga en su plazo;
+  - el desglose por cliente y la lista de partidas, cada una con un enlace a su factura o encargo.
+
+  Los importes en otra moneda se convierten con el tipo de tu última factura en esa moneda. Si aún no tienes ninguna, indica un tipo aproximado en **Ajustes → Preferencias → Tipos de cambio aproximados**. El inicio muestra también los **cobros previstos en 30 días**.
+
 - **Informes:** elige el año para ver:
   - facturado, cobrado, gastos, rendimiento neto, pendiente de cobro y €/hora efectivo;
   - un gráfico mensual de lo facturado y los gastos (el botón de la tabla muestra las cifras);

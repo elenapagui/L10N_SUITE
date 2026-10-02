@@ -88,6 +88,15 @@ await post('/api/rates', {
   currency: 'USD',
 });
 await post('/api/rates', {
+  clientId: hangul.id,
+  service: 'review',
+  unit: 'char',
+  sourceLang: 'ko',
+  targetLang: 'es',
+  rateMicros: 12_000,
+  currency: 'USD',
+});
+await post('/api/rates', {
   clientId: pixel.id,
   service: 'translation',
   unit: 'word',

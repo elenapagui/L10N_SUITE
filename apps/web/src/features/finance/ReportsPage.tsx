@@ -11,6 +11,7 @@ import { Page, PageHeader } from '@/components/layout/PageHeader';
 import { apiUrl } from '@/lib/api';
 import { Stat } from '@/features/work/shared';
 import { ChartFrame, GroupedBarChart, HBarList, Legend, type ChartSeries } from './charts';
+import { ForecastPanel } from './ForecastPanel';
 import { useOverview, useQuarter } from './hooks';
 
 const MONTHS = ['ene', 'feb', 'mar', 'abr', 'may', 'jun', 'jul', 'ago', 'sep', 'oct', 'nov', 'dic'];
@@ -212,6 +213,9 @@ export function ReportsPage() {
         <Spinner />
       ) : (
         <div className="grid gap-4">
+          <ForecastPanel />
+
+          <h2 className="mt-2 text-lg font-semibold">Ingresos y gastos de {year}</h2>
           <div className="grid gap-3 sm:grid-cols-3 xl:grid-cols-6" data-testid="finance-kpis">
             <Stat
               label="Facturado"

@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { toast } from 'sonner';
 import { Link, useNavigate, useParams } from '@tanstack/react-router';
 import { ClipboardPaste, Package, Pause, Play, Trash2 } from 'lucide-react';
 import {
@@ -13,6 +14,7 @@ import {
   emptyAnalysis,
   formatMoney,
   formatNumber,
+  formatRate,
   pairLabel,
   parseCatAnalysis,
   rawVolume,
@@ -41,6 +43,7 @@ import { formatDuration } from '@/lib/format';
 import { QueriesTable, NewQueryButton } from './QueriesPage';
 import { TaskListView } from './tasks/TaskListView';
 import { useTimerControls } from './time/useTimerControls';
+import { RateHint, useResolvedRate } from './RateHint';
 import { BackLink, FieldGrid, Section, Stat, usePatch } from './shared';
 
 function PasteAnalysisDialog({
@@ -118,6 +121,9 @@ function VolumeSection({
     save({ catAnalysis: next });
   };
   const unitLabel = UNIT_PLURALS[job.unit] ?? '';
+  const resolved = useResolvedRate(job.projectId, job.service, job.unit);
+  const rateEditable =
+    !job.amountManual && job.billingStatus !== 'invoiced' && job.billingStatus !== 'paid';
 
   return (
     <Section
@@ -178,6 +184,17 @@ function VolumeSection({
             />
           </Field>
         </FieldGrid>
+        <RateHint
+          resolved={resolved.data}
+          clientId={job.clientId}
+          currentMicros={job.rateMicros}
+          currentCurrency={job.currency}
+          onApply={
+            rateEditable
+              ? (rate) => save({ rateMicros: rate.rateMicros, currency: rate.currency })
+              : undefined
+          }
+        />
 
         {useAnalysis && job.unit !== 'flat' && (
           <div className="grid gap-3">
@@ -314,7 +331,16 @@ export function JobDetailPage() {
       </Page>
     );
   const job = q.data;
-  const save = (p: Partial<Job>) => patch.mutate(p);
+  const save = (p: Partial<Job>) =>
+    patch.mutate(p, {
+      onSuccess: (updated) => {
+        const u = updated as Job & { rateChanged?: boolean };
+        if (u.rateChanged)
+          toast.success(
+            `Tarifa actualizada a ${formatRate(u.rateMicros, u.currency)} según las tarifas del cliente`,
+          );
+      },
+    });
   const grid = client.data?.client.catGrid ?? null;
   const running = timer.data?.running?.jobId === job.id;
 

@@ -24,6 +24,7 @@ type Query = Record<string, string | number | boolean | null | undefined>;
 
 /** Claves que dependen de los datos de trabajo: se refrescan tras cualquier cambio. */
 const WORK_KEYS = [
+  'rate-resolve',
   'clients',
   'client',
   'games',
@@ -48,6 +49,7 @@ const WORK_KEYS = [
   'invoice',
   'expenses',
   'finance-overview',
+  'finance-forecast',
   'finance-quarter',
   'pages',
   'backlinks',

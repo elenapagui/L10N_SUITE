@@ -175,6 +175,46 @@ export interface BreakdownRow {
   count: number;
 }
 
+/** Una partida de la previsión de cobros: una factura emitida o un encargo sin facturar. */
+export interface ForecastItem {
+  kind: 'invoice' | 'job';
+  id: string;
+  label: string;
+  clientName: string | null;
+  /** Fecha prevista de cobro. */
+  expectedDate: string;
+  /** Importe que se espera cobrar (con IVA e IRPF), en la moneda de la partida. */
+  cents: number;
+  currency: string;
+  /** En la moneda principal; null si no hay tipo de cambio conocido. */
+  baseCents: number | null;
+  overdue: boolean;
+}
+
+export interface Forecast {
+  baseCurrency: string;
+  today: string;
+  /** Facturas vencidas sin cobrar. */
+  overdueCents: number;
+  /** Lo que se espera cobrar en los próximos 30 días (sin lo vencido). */
+  next30Cents: number;
+  /** Todo lo pendiente: vencido + previsto (también más allá del horizonte). */
+  totalCents: number;
+  /** Previsto después del último mes mostrado. */
+  laterCents: number;
+  months: { month: string; invoicedCents: number; pendingCents: number }[];
+  byClient: {
+    key: string;
+    label: string;
+    invoicedCents: number;
+    pendingCents: number;
+    totalCents: number;
+  }[];
+  items: ForecastItem[];
+  /** Partidas en otra moneda sin tipo de cambio conocido (no se suman). */
+  unconverted: number;
+}
+
 export interface FinanceOverview {
   year: number;
   baseCurrency: string;

@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { useNavigate, useParams } from '@tanstack/react-router';
+import { useNavigate, useParams, useSearch } from '@tanstack/react-router';
 import { Building2, Plus, Trash2 } from 'lucide-react';
 import {
   CAT_BANDS,
@@ -147,6 +147,7 @@ function CatGridEditor({
 
 export function ClientDetailPage() {
   const { clientId } = useParams({ strict: false }) as { clientId: string };
+  const { tab } = useSearch({ strict: false }) as { tab?: string };
   const navigate = useNavigate();
   const q = useClient(clientId);
   const projects = useProjects({ clientId });
@@ -214,7 +215,7 @@ export function ClientDetailPage() {
           tone={client.pendingBillingCents > 0 ? 'warning' : undefined}
         />
       </div>
-      <Tabs defaultValue="resumen">
+      <Tabs defaultValue={tab ?? 'resumen'}>
         <TabsList>
           <TabsTrigger value="resumen">Datos</TabsTrigger>
           <TabsTrigger value="contactos">Contactos ({contacts.length})</TabsTrigger>

@@ -171,6 +171,79 @@ export function deriveJobFields(
   return { volume, weightedVolume: weighted, amountCents };
 }
 
+/** Tarifa vigente para un encargo según el cliente e idiomas de su proyecto. */
+export function rateForJob(
+  ctx: AppContext,
+  job: { projectId: string; service?: string | null; unit?: string | null },
+) {
+  const project = getProject(ctx, job.projectId);
+  return resolveRate(ctx, {
+    clientId: project.clientId,
+    service: job.service ?? 'translation',
+    unit: job.unit ?? 'word',
+    sourceLang: project.sourceLang,
+    targetLang: project.targetLang,
+  });
+}
+
+/** Un encargo cuya tarifa e importe aún se pueden recalcular (no facturado ni fijado a mano). */
+function rateIsEditable(job: { amountManual?: boolean | null; billingStatus?: string | null }) {
+  return !job.amountManual && job.billingStatus !== 'invoiced' && job.billingStatus !== 'paid';
+}
+
+export interface RateChange {
+  jobId: string;
+  title: string;
+  fromMicros: number | null;
+  toMicros: number;
+  currency: string;
+}
+
+/**
+ * Aplica la tarifa vigente a los encargos del proyecto pendientes de facturar.
+ * Con `dryRun` solo devuelve los cambios que se harían.
+ */
+export function applyProjectRates(
+  ctx: AppContext,
+  projectId: string,
+  dryRun: boolean,
+): RateChange[] {
+  const jobs = listJobs(ctx, { projectId }).filter(
+    (j) => rateIsEditable(j) && j.billingStatus === 'pending',
+  );
+  const changes: RateChange[] = [];
+  for (const j of jobs) {
+    const rate = rateForJob(ctx, j);
+    if (!rate || (rate.rateMicros === j.rateMicros && rate.currency === j.currency)) continue;
+    changes.push({
+      jobId: j.id,
+      title: j.title,
+      fromMicros: j.rateMicros,
+      toMicros: rate.rateMicros,
+      currency: rate.currency,
+    });
+  }
+  if (!dryRun && changes.length) {
+    ctx.sqlite.transaction(() => {
+      for (const c of changes) {
+        const before = getJob(ctx, c.jobId);
+        const merged = { ...before, rateMicros: c.toMicros, currency: c.currency };
+        const derived = deriveJobFields(ctx, merged);
+        updateRow(
+          ctx,
+          'jobs',
+          JOB_COLUMNS,
+          c.jobId,
+          { rateMicros: c.toMicros, currency: c.currency, ...derived },
+          { what: 'El encargo' },
+        );
+        indexJob(ctx, getJob(ctx, c.jobId));
+      }
+    })();
+  }
+  return changes;
+}
+
 export function registerJobEntity(): void {
   registerTrashable({
     type: 'job',
@@ -270,6 +343,21 @@ export async function jobRoutes(app: FastifyInstance) {
     if (patch.status === 'delivered' && !before.deliveredAt && patch.deliveredAt === undefined) {
       patch.deliveredAt = todayISO(ctx.now());
     }
+    // Si cambia el servicio, la unidad o el proyecto, la tarifa automática se vuelve a buscar.
+    // Una tarifa puesta a mano (distinta de la que tocaba) se respeta.
+    let rateChanged = false;
+    const touchesRate =
+      patch.service !== undefined || patch.unit !== undefined || patch.projectId !== undefined;
+    if (touchesRate && patch.rateMicros === undefined && rateIsEditable({ ...before, ...patch })) {
+      const previous = rateForJob(ctx, before);
+      const wasAutomatic = before.rateMicros == null || previous?.rateMicros === before.rateMicros;
+      const next = rateForJob(ctx, { ...before, ...patch });
+      if (wasAutomatic && next && next.rateMicros !== before.rateMicros) {
+        patch.rateMicros = next.rateMicros;
+        patch.currency = next.currency;
+        rateChanged = true;
+      }
+    }
     const merged = { ...before, ...patch };
     const derived = deriveJobFields(ctx, merged);
     updateRow(ctx, 'jobs', JOB_COLUMNS, id, { ...patch, ...derived }, { what: 'El encargo' });
@@ -283,7 +371,26 @@ export async function jobRoutes(app: FastifyInstance) {
         summary: `Encargo «${job.title}»: ${labelOf(JOB_STATUSES, job.status)}`,
       });
     }
-    return job;
+    return { ...job, rateChanged };
+  });
+
+  app.get('/api/jobs/:id/rate', async (req) => {
+    const { id } = parse(idParam, req.params);
+    const job = getJob(ctx, id);
+    const rate = rateForJob(ctx, job);
+    return { rate, source: rate ? (rate.clientId ? 'client' : 'general') : null };
+  });
+
+  app.post('/api/projects/:id/apply-rates', async (req) => {
+    const { id } = parse(idParam, req.params);
+    const q = parse(
+      z.object({ dryRun: z.enum(['0', '1', 'true', 'false']).optional() }),
+      req.query,
+    );
+    const dryRun = q.dryRun === '1' || q.dryRun === 'true';
+    getProject(ctx, id);
+    const changes = applyProjectRates(ctx, id, dryRun);
+    return { changes, applied: !dryRun };
   });
 
   app.delete('/api/jobs/:id', async (req) => {

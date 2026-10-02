@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { useNavigate } from '@tanstack/react-router';
 import { Package, Plus, Search } from 'lucide-react';
 import {
@@ -27,8 +27,9 @@ import { EntitySelect } from '@/components/common/EntitySelect';
 import { DecimalInput } from '@/components/common/inputs';
 import { BillingBadge, DueLabel, JobStatusBadge } from '@/components/common/badges';
 import { EmptyState, Page, PageHeader } from '@/components/layout/PageHeader';
-import { useApiMutation, useJobs, useProjects, useTemplates } from '@/hooks/work';
+import { useApiMutation, useJobs, useProject, useProjects, useTemplates } from '@/hooks/work';
 import { api } from '@/lib/api';
+import { RateHint, useResolvedRate } from './RateHint';
 
 export function NewJobDialog({
   open,
@@ -52,6 +53,18 @@ export function NewJobDialog({
   const [dueTime, setDueTime] = useState('');
   const [poNumber, setPoNumber] = useState('');
   const [templateId, setTemplateId] = useState('template-job-standard');
+  // La unidad y la tarifa salen de las tarifas del cliente hasta que se cambian a mano.
+  const [unitTouched, setUnitTouched] = useState(false);
+  const [rateMicros, setRateMicros] = useState<number | null>(null);
+  const [rateTouched, setRateTouched] = useState(false);
+  const project = useProject(projectId ?? '');
+  const resolved = useResolvedRate(projectId, service, unitTouched ? unit : null);
+  useEffect(() => {
+    if (!resolved.data) return;
+    const rate = resolved.data.rate;
+    if (rate && !unitTouched) setUnit(rate.unit);
+    if (!rateTouched) setRateMicros(rate?.rateMicros ?? null);
+  }, [resolved.data, unitTouched, rateTouched]);
 
   const create = useApiMutation(
     () =>
@@ -64,6 +77,8 @@ export function NewJobDialog({
           contentType: contentType || null,
           unit,
           volume,
+          ...(rateTouched ? { rateMicros } : {}),
+          ...(resolved.data?.rate ? { currency: resolved.data.rate.currency } : {}),
           dueDate: dueDate || null,
           dueTime: dueTime || null,
           poNumber,
@@ -125,7 +140,7 @@ export function NewJobDialog({
               <Input value={poNumber} onChange={(e) => setPoNumber(e.target.value)} />
             </Field>
           </div>
-          <div className="grid gap-4 sm:grid-cols-3">
+          <div className="grid items-start gap-4 sm:grid-cols-3">
             <Field label="Servicio">
               <NativeSelect value={service} onChange={(e) => setService(e.target.value)}>
                 {SERVICES.map((s) => (
@@ -156,7 +171,14 @@ export function NewJobDialog({
               </NativeSelect>
             </Field>
             <Field label="Unidad">
-              <NativeSelect value={unit} onChange={(e) => setUnit(e.target.value)}>
+              <NativeSelect
+                value={unit}
+                onChange={(e) => {
+                  setUnit(e.target.value);
+                  setUnitTouched(true);
+                }}
+                data-testid="job-unit"
+              >
                 {UNITS.map((u) => (
                   <option key={u.value} value={u.value}>
                     {u.label}
@@ -167,7 +189,20 @@ export function NewJobDialog({
             <Field label="Volumen" hint="Podrás pegar el análisis del CAT después">
               <DecimalInput value={volume} onCommit={setVolume} maxDecimals={2} />
             </Field>
-            <div className="grid grid-cols-[1fr_auto] gap-2">
+            <Field label={unit === 'flat' ? 'Importe (tarifa plana)' : 'Tarifa'}>
+              <DecimalInput
+                value={rateMicros}
+                onCommit={(v) => {
+                  setRateMicros(v);
+                  setRateTouched(true);
+                }}
+                scale={1_000_000}
+                maxDecimals={6}
+                suffix={resolved.data?.rate?.currency ?? 'EUR'}
+                testId="new-job-rate"
+              />
+            </Field>
+            <div className="grid grid-cols-[1fr_auto] gap-2 sm:col-span-2">
               <Field label="Entrega">
                 <Input
                   type="date"
@@ -186,6 +221,17 @@ export function NewJobDialog({
               </Field>
             </div>
           </div>
+          {projectId && (
+            <RateHint
+              resolved={resolved.data}
+              clientId={project.data?.clientId}
+              currentMicros={rateTouched ? rateMicros : undefined}
+              onApply={(rate) => {
+                setRateMicros(rate.rateMicros);
+                setRateTouched(false);
+              }}
+            />
+          )}
           <DialogFooter>
             <Button
               type="submit"

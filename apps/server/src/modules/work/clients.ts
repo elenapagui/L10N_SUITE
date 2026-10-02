@@ -179,17 +179,23 @@ export function resolveRate(
   q: {
     clientId: string | null;
     service: string;
-    unit: string;
+    /** Sin unidad, se elige la mejor tarifa del servicio en cualquier unidad. */
+    unit?: string | null;
     sourceLang: string | null;
     targetLang: string | null;
   },
 ): Rate | null {
   const candidates = ctx.sqlite
     .prepare(
-      `${RATE_SELECT} WHERE r.deleted_at IS NULL AND r.service = ? AND r.unit = ?
-       AND (r.client_id = ? OR r.client_id IS NULL)`,
+      `${RATE_SELECT} WHERE r.deleted_at IS NULL AND r.service = ?
+       ${q.unit ? 'AND r.unit = ?' : ''}
+       AND (r.client_id = ? OR r.client_id IS NULL)
+       ORDER BY r.updated_at DESC`,
     )
-    .all(q.service, q.unit, q.clientId) as Record<string, unknown>[];
+    .all(...(q.unit ? [q.service, q.unit, q.clientId] : [q.service, q.clientId])) as Record<
+    string,
+    unknown
+  >[];
   const rates = candidates.map((r) => decodeRow<Rate>(RATE_COLUMNS, r));
   const score = (r: Rate) => {
     const langMatch =
@@ -198,6 +204,7 @@ export function resolveRate(
     if (!langMatch) return -1;
     return (r.clientId ? 10 : 0) + (r.sourceLang ? 2 : 0) + (r.targetLang ? 2 : 0);
   };
+  // El orden es estable: a igual puntuación gana la tarifa modificada más recientemente.
   const best = rates
     .map((r) => ({ r, s: score(r) }))
     .filter((x) => x.s >= 0)
@@ -321,23 +328,35 @@ export async function clientRoutes(app: FastifyInstance) {
   app.get('/api/rates/resolve', async (req) => {
     const q = parse(
       z.object({
+        projectId: z.string().optional(),
         clientId: z.string().optional(),
         service: z.string(),
-        unit: z.string(),
+        unit: z.string().optional(),
         sourceLang: z.string().optional(),
         targetLang: z.string().optional(),
       }),
       req.query,
     );
-    return {
-      rate: resolveRate(ctx, {
-        clientId: q.clientId ?? null,
-        service: q.service,
-        unit: q.unit,
-        sourceLang: q.sourceLang ?? null,
-        targetLang: q.targetLang ?? null,
-      }),
-    };
+    let { clientId = null, sourceLang = null, targetLang = null } = q;
+    if (q.projectId) {
+      const p = ctx.sqlite
+        .prepare(
+          'SELECT client_id AS clientId, source_lang AS sourceLang, target_lang AS targetLang FROM projects WHERE id = ? AND deleted_at IS NULL',
+        )
+        .get(q.projectId) as
+        | { clientId: string | null; sourceLang: string | null; targetLang: string | null }
+        | undefined;
+      if (!p) throw new NotFoundError('El proyecto');
+      ({ clientId, sourceLang, targetLang } = p);
+    }
+    const rate = resolveRate(ctx, {
+      clientId,
+      service: q.service,
+      unit: q.unit,
+      sourceLang,
+      targetLang,
+    });
+    return { rate, source: rate ? (rate.clientId ? 'client' : 'general') : null };
   });
 
   app.post('/api/rates', async (req, reply) => {

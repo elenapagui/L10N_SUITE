@@ -11,8 +11,12 @@ import {
   pairLabel,
   quarterRange,
   todayISO,
+  addDaysISO,
+  invoiceTotals,
   type BreakdownRow,
   type FinanceOverview,
+  type Forecast,
+  type ForecastItem,
   type QuarterReport,
 } from '@l10n/shared';
 import type { AppContext } from '../../context';
@@ -20,6 +24,8 @@ import { parse } from '../../lib/validate';
 import { getSettings } from '../../services/settings';
 import { contentDisposition } from '../attachments';
 import { listExpenses } from './expenses';
+import { listClients } from '../work/clients';
+import { listJobs } from '../work/jobs';
 import { BILLABLE, listInvoices } from './invoices';
 
 /** Convierte a la moneda principal con el tipo de cambio de la factura o del gasto. */
@@ -374,6 +380,136 @@ export async function accountingWorkbook(
   return { buffer: Buffer.from(await wb.xlsx.writeBuffer()), name };
 }
 
+/** Último día del mes de una fecha ISO. */
+function endOfMonthISO(date: string): string {
+  const [y, m] = date.split('-').map(Number) as [number, number];
+  return new Date(Date.UTC(y, m, 0)).toISOString().slice(0, 10);
+}
+
+/**
+ * Previsión de cobros de los próximos meses:
+ * - facturas emitidas sin cobrar, en su fecha de vencimiento (las vencidas, aparte);
+ * - encargos pendientes de facturar: se supone la factura a fin del mes de entrega (o de la
+ *   fecha prevista; nunca antes de hoy) y el cobro tras el plazo de pago del cliente.
+ */
+export function cashForecast(ctx: AppContext, horizonMonths = 6): Forecast {
+  const prefs = getSettings(ctx).preferences;
+  const baseCurrency = prefs.baseCurrency;
+  const today = todayISO(ctx.now());
+  const clients = new Map(listClients(ctx, { includeInactive: true }).map((c) => [c.id, c]));
+  const invoices = listInvoices(ctx).filter((i) => i.status !== 'cancelled');
+  // Tipo de cambio de cada moneda: el de la factura más reciente en esa moneda.
+  const fx = new Map<string, number>([[baseCurrency, 1]]);
+  for (const i of [...invoices].sort((a, b) => a.issueDate.localeCompare(b.issueDate)))
+    if (i.exchangeRate) fx.set(i.currency, i.exchangeRate);
+  // Los tipos aproximados de Ajustes tienen prioridad: los ha fijado la usuaria para esto.
+  for (const [cur, rate] of Object.entries(prefs.fxRates ?? {}))
+    if (cur !== baseCurrency) fx.set(cur, rate);
+
+  const items: ForecastItem[] = [];
+  for (const inv of invoices) {
+    if (inv.status !== 'issued') continue;
+    const terms =
+      (inv.clientId ? clients.get(inv.clientId)?.paymentTermsDays : null) ?? prefs.paymentTermsDays;
+    const expected = inv.dueDate ?? addDaysISO(inv.issueDate, terms);
+    items.push({
+      kind: 'invoice',
+      id: inv.id,
+      label: `Factura ${inv.number}`,
+      clientName: inv.clientName,
+      expectedDate: expected,
+      cents: inv.totalCents,
+      currency: inv.currency,
+      baseCents: toBase(inv.totalCents, inv.exchangeRate),
+      overdue: expected < today,
+    });
+  }
+  const jobs = listJobs(ctx, {}).filter(
+    (j) => j.billingStatus === 'pending' && j.status !== 'cancelled' && (j.amountCents ?? 0) > 0,
+  );
+  for (const j of jobs) {
+    const client = j.clientId ? clients.get(j.clientId) : undefined;
+    const ref = j.deliveredAt ?? j.dueDate ?? today;
+    const invoiceDate = [endOfMonthISO(ref), today].sort().at(-1)!;
+    const terms = client?.paymentTermsDays ?? prefs.paymentTermsDays;
+    const { totalCents } = invoiceTotals(
+      j.amountCents!,
+      client?.vatPct ?? prefs.defaultVatPct,
+      client?.irpfPct ?? prefs.defaultIrpfPct,
+    );
+    const rate = fx.get(j.currency);
+    items.push({
+      kind: 'job',
+      id: j.id,
+      label: j.title,
+      clientName: j.clientName,
+      expectedDate: addDaysISO(invoiceDate, terms),
+      cents: totalCents,
+      currency: j.currency,
+      baseCents: rate ? toBase(totalCents, rate) : null,
+      overdue: false,
+    });
+  }
+  items.sort((a, b) => a.expectedDate.localeCompare(b.expectedDate));
+
+  const months = Array.from({ length: horizonMonths }, (_, i) => {
+    const d = new Date(`${today.slice(0, 7)}-01T12:00:00Z`);
+    d.setUTCMonth(d.getUTCMonth() + i);
+    return { month: d.toISOString().slice(0, 7), invoicedCents: 0, pendingCents: 0 };
+  });
+  const lastMonth = months.at(-1)!.month;
+  const in30 = addDaysISO(today, 30);
+  const byClient = new Map<string, Forecast['byClient'][number]>();
+  let overdueCents = 0;
+  let next30Cents = 0;
+  let laterCents = 0;
+  let totalCents = 0;
+  let unconverted = 0;
+  for (const it of items) {
+    if (it.baseCents == null) {
+      unconverted++;
+      continue;
+    }
+    const cents = it.baseCents;
+    totalCents += cents;
+    const key = it.clientName ?? '—';
+    const c = byClient.get(key) ?? {
+      key,
+      label: it.clientName ?? 'Sin cliente',
+      invoicedCents: 0,
+      pendingCents: 0,
+      totalCents: 0,
+    };
+    c[it.kind === 'invoice' ? 'invoicedCents' : 'pendingCents'] += cents;
+    c.totalCents += cents;
+    byClient.set(key, c);
+    if (it.overdue) {
+      overdueCents += cents;
+      continue;
+    }
+    if (it.expectedDate <= in30) next30Cents += cents;
+    const month = it.expectedDate.slice(0, 7);
+    if (month > lastMonth) {
+      laterCents += cents;
+      continue;
+    }
+    const m = months.find((x) => x.month === month) ?? months[0]!;
+    m[it.kind === 'invoice' ? 'invoicedCents' : 'pendingCents'] += cents;
+  }
+  return {
+    baseCurrency,
+    today,
+    overdueCents,
+    next30Cents,
+    totalCents,
+    laterCents,
+    months,
+    byClient: [...byClient.values()].sort((a, b) => b.totalCents - a.totalCents),
+    items,
+    unconverted,
+  };
+}
+
 export async function reportRoutes(app: FastifyInstance) {
   const ctx = app.ctx;
   const yearSchema = z.coerce.number().int().min(2000).max(2100);
@@ -381,6 +517,14 @@ export async function reportRoutes(app: FastifyInstance) {
   app.get('/api/reports/overview', async (req) => {
     const q = parse(z.object({ year: yearSchema.optional() }), req.query);
     return financeOverview(ctx, q.year ?? Number(todayISO(ctx.now()).slice(0, 4)));
+  });
+
+  app.get('/api/reports/forecast', async (req) => {
+    const q = parse(
+      z.object({ months: z.coerce.number().int().min(1).max(24).optional() }),
+      req.query,
+    );
+    return cashForecast(ctx, q.months ?? 6);
   });
 
   app.get('/api/reports/quarter', async (req) => {

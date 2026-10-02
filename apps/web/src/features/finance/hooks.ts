@@ -2,6 +2,7 @@ import { useQuery } from '@tanstack/react-query';
 import type {
   Expense,
   FinanceOverview,
+  Forecast,
   Invoice,
   Job,
   PendingBillingGroup,
@@ -31,6 +32,11 @@ export const useExpenses = (query: Query = {}) =>
   useQuery({
     queryKey: ['expenses', query],
     queryFn: () => api<Expense[]>('/expenses', { query }),
+  });
+export const useForecast = (months = 6) =>
+  useQuery({
+    queryKey: ['finance-forecast', months],
+    queryFn: () => api<Forecast>('/reports/forecast', { query: { months } }),
   });
 export const useOverview = (year: number) =>
   useQuery({

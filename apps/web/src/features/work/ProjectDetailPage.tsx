@@ -2,8 +2,16 @@ import { useState } from 'react';
 import { Link, useNavigate, useParams } from '@tanstack/react-router';
 import { FolderKanban, FolderOpen, Pause, Play, Plus, Trash2 } from 'lucide-react';
 import { toast } from 'sonner';
-import { LANGUAGES, PROJECT_STATUSES, formatMoney, pairLabel, type Project } from '@l10n/shared';
+import {
+  languageOptions,
+  PROJECT_STATUSES,
+  formatMoney,
+  formatRate,
+  pairLabel,
+  type Project,
+} from '@l10n/shared';
 import { Button } from '@/components/ui/button';
+import { useConfirm } from '@/components/ui/confirm';
 import { Field } from '@/components/ui/label';
 import { Input, NativeSelect } from '@/components/ui/input';
 import { Spinner } from '@/components/ui/misc';
@@ -14,7 +22,16 @@ import { CommitInput } from '@/components/common/inputs';
 import { TagPicker } from '@/components/common/TagPicker';
 import { Page, PageHeader } from '@/components/layout/PageHeader';
 import { useTrashWithUndo } from '@/hooks/mutations';
-import { useClient, useClients, useGames, useJobs, useProject, useTimer } from '@/hooks/work';
+import {
+  useClient,
+  useClients,
+  useGames,
+  useInvalidateWork,
+  useJobs,
+  useProject,
+  useTimer,
+} from '@/hooks/work';
+import { api } from '@/lib/api';
 import { desktop } from '@/lib/desktop';
 import { formatDuration } from '@/lib/format';
 import { JobsTable, NewJobDialog } from './JobsPage';
@@ -23,6 +40,14 @@ import { TaskListView } from './tasks/TaskListView';
 import { TimeEntriesList } from './time/TimePage';
 import { useTimerControls } from './time/useTimerControls';
 import { BackLink, FieldGrid, Section, Stat, usePatch } from './shared';
+
+interface RateChange {
+  jobId: string;
+  title: string;
+  fromMicros: number | null;
+  toMicros: number;
+  currency: string;
+}
 
 export function ProjectDetailPage() {
   const { projectId } = useParams({ strict: false }) as { projectId: string };
@@ -37,6 +62,46 @@ export function ProjectDetailPage() {
   const timer = useTimer();
   const controls = useTimerControls();
   const [newJob, setNewJob] = useState(false);
+  const confirm = useConfirm();
+  const invalidate = useInvalidateWork();
+
+  /** Tras cambiar el cliente o los idiomas, ofrece poner la tarifa vigente en los encargos pendientes. */
+  const offerRateUpdate = async () => {
+    const preview = await api<{ changes: RateChange[] }>(`/projects/${projectId}/apply-rates`, {
+      method: 'POST',
+      query: { dryRun: '1' },
+    });
+    const n = preview.changes.length;
+    if (!n) return;
+    const ok = await confirm({
+      title:
+        n === 1 ? '¿Actualizar la tarifa de 1 encargo?' : `¿Actualizar la tarifa de ${n} encargos?`,
+      description: (
+        <div className="grid gap-2">
+          <p>
+            Con el cliente y los idiomas nuevos, estos encargos pendientes de facturar tienen otra
+            tarifa:
+          </p>
+          <ul className="grid gap-1">
+            {preview.changes.slice(0, 8).map((c) => (
+              <li key={c.jobId} className="flex justify-between gap-3">
+                <span className="truncate">{c.title}</span>
+                <span className="shrink-0 tabular-nums">
+                  {formatRate(c.fromMicros, c.currency)} → {formatRate(c.toMicros, c.currency)}
+                </span>
+              </li>
+            ))}
+            {n > 8 && <li>y {n - 8} más</li>}
+          </ul>
+        </div>
+      ),
+      confirmLabel: 'Actualizar tarifas',
+    });
+    if (!ok) return;
+    await api(`/projects/${projectId}/apply-rates`, { method: 'POST' });
+    await invalidate();
+    toast.success(n === 1 ? 'Tarifa actualizada' : `${n} tarifas actualizadas`);
+  };
 
   if (q.isLoading)
     return (
@@ -51,7 +116,12 @@ export function ProjectDetailPage() {
       </Page>
     );
   const p = q.data;
-  const save = (v: Partial<Project>) => patch.mutate(v);
+  const save = (v: Partial<Project>) =>
+    patch.mutate(v, {
+      onSuccess: () => {
+        if ('clientId' in v || 'sourceLang' in v || 'targetLang' in v) void offerRateUpdate();
+      },
+    });
   const running =
     timer.data?.running?.projectId === p.id &&
     !timer.data.running.jobId &&
@@ -221,7 +291,7 @@ export function ProjectDetailPage() {
                   onChange={(e) => save({ sourceLang: e.target.value || null })}
                 >
                   <option value="">—</option>
-                  {LANGUAGES.map((l) => (
+                  {languageOptions(p.sourceLang).map((l) => (
                     <option key={l.code} value={l.code}>
                       {l.label}
                     </option>
@@ -234,7 +304,7 @@ export function ProjectDetailPage() {
                   onChange={(e) => save({ targetLang: e.target.value || null })}
                 >
                   <option value="">—</option>
-                  {LANGUAGES.map((l) => (
+                  {languageOptions(p.targetLang).map((l) => (
                     <option key={l.code} value={l.code}>
                       {l.label}
                     </option>

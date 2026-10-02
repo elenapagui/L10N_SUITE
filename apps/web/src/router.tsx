@@ -57,6 +57,8 @@ const clientsRoute = createRoute({
 const clientRoute = createRoute({
   getParentRoute: () => rootRoute,
   path: '/trabajo/clientes/$clientId',
+  validateSearch: (search: Record<string, unknown>): { tab?: string } =>
+    typeof search.tab === 'string' ? { tab: search.tab } : {},
   component: ClientDetailPage,
 });
 const gamesRoute = createRoute({

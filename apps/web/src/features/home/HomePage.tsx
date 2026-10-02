@@ -12,6 +12,7 @@ import { useBackups } from '@/features/settings/BackupsPanel';
 import { Stat } from '@/features/work/shared';
 import { TaskRow } from '@/features/work/tasks/TaskRow';
 import { TaskQuickAdd } from '@/features/work/tasks/TaskQuickAdd';
+import { useForecast } from '@/features/finance/hooks';
 import { ResearchCard } from './ResearchCard';
 import { api } from '@/lib/api';
 import { formatHours } from '@/lib/format';
@@ -119,6 +120,7 @@ export function HomePage() {
   const now = new Date();
   const settings = useSettings();
   const dashboard = useDashboard();
+  const forecast = useForecast(6);
   const navigate = useNavigate();
   const activity = useQuery({
     queryKey: ['activity'],
@@ -138,7 +140,7 @@ export function HomePage() {
         <Spinner />
       ) : (
         <div className="grid gap-6">
-          <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-5">
+          <div className="grid gap-3 sm:grid-cols-3 xl:grid-cols-6">
             <Stat
               label="Encargos en curso"
               value={d.activeJobCount}
@@ -174,6 +176,20 @@ export function HomePage() {
                     : undefined
                 }
                 tone={d.overdueInvoiceCount ? 'danger' : undefined}
+              />
+            </Link>
+            <Link
+              to="/finanzas/informes"
+              className="rounded-lg focus-visible:ring-2 focus-visible:ring-ring"
+            >
+              <Stat
+                label="Cobros en 30 días"
+                value={
+                  forecast.data
+                    ? formatMoney(forecast.data.next30Cents, forecast.data.baseCurrency)
+                    : '—'
+                }
+                hint="Previsión con IVA e IRPF"
               />
             </Link>
           </div>

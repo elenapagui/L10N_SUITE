@@ -2,7 +2,7 @@ import { useMemo, useState } from 'react';
 import { useNavigate } from '@tanstack/react-router';
 import { FolderKanban, Plus, Search } from 'lucide-react';
 import {
-  LANGUAGES,
+  languageOptions,
   PROJECT_STATUSES,
   formatMoney,
   pairLabel,
@@ -156,7 +156,7 @@ export function NewProjectDialog({
           <div className="grid gap-4 sm:grid-cols-4">
             <Field label="Origen">
               <NativeSelect value={sourceLang} onChange={(e) => setSourceLang(e.target.value)}>
-                {LANGUAGES.map((l) => (
+                {languageOptions(sourceLang).map((l) => (
                   <option key={l.code} value={l.code}>
                     {l.label}
                   </option>
@@ -165,7 +165,7 @@ export function NewProjectDialog({
             </Field>
             <Field label="Destino">
               <NativeSelect value={targetLang} onChange={(e) => setTargetLang(e.target.value)}>
-                {LANGUAGES.map((l) => (
+                {languageOptions(targetLang).map((l) => (
                   <option key={l.code} value={l.code}>
                     {l.label}
                   </option>

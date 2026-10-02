@@ -40,6 +40,9 @@ test('flujo completo: cliente → proyecto → encargo con análisis CAT → ent
   await page.getByTestId('project-new-job').click();
   await page.getByLabel('Título').fill('Parche 1.0');
   await page.getByTestId('job-due').fill('2030-01-15');
+  // La tarifa del cliente se aplica sola y se explica de dónde sale.
+  await expect(page.getByTestId('rate-hint')).toContainText('Tarifa de Agencia E2E');
+  await expect(page.getByTestId('rate-hint')).toContainText('0,05');
   await page.getByTestId('create-job').click();
   await expect(page.getByRole('heading', { name: 'Parche 1.0' })).toBeVisible();
   await expect(page.getByText('Control de calidad (QA)')).toBeVisible();

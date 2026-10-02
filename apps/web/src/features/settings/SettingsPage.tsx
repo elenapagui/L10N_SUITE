@@ -12,7 +12,7 @@ import {
   User,
 } from 'lucide-react';
 import { toast } from 'sonner';
-import { CURRENCIES, LANGUAGES, type Settings } from '@l10n/shared';
+import { CURRENCIES, languageOptions, type Settings } from '@l10n/shared';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Field } from '@/components/ui/label';
@@ -21,6 +21,8 @@ import { Kbd, Spinner, Switch } from '@/components/ui/misc';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Page, PageHeader } from '@/components/layout/PageHeader';
 import { useAppInfo, useSettings, useUpdateSettings } from '@/hooks/core';
+import { useClients } from '@/hooks/work';
+import { DecimalInput } from '@/components/common/inputs';
 import { applyTheme } from '@/hooks/theme';
 import { desktop, modKey } from '@/lib/desktop';
 import { BackupsSettings } from './BackupsPanel';
@@ -95,6 +97,54 @@ function ProfileForm({ initial }: { initial: Settings['profile'] }) {
         </form>
       </CardContent>
     </Card>
+  );
+}
+
+/** Tipos de cambio aproximados de las monedas que usan tus clientes, para la previsión de cobros. */
+function FxRatesField({
+  initial,
+  save,
+}: {
+  initial: Settings['preferences'];
+  save: (patch: Partial<Settings['preferences']>) => void;
+}) {
+  const clients = useClients();
+  const used = [
+    ...new Set(
+      (clients.data ?? []).map((c) => c.currency).filter((c) => c !== initial.baseCurrency),
+    ),
+  ].sort();
+  if (!used.length) return null;
+  return (
+    <Field
+      label="Tipos de cambio aproximados"
+      hint="Solo para la previsión de cobros mientras no haya facturas en esa moneda. Las facturas usan su propio tipo."
+      className="sm:col-span-2"
+    >
+      <div className="flex flex-wrap gap-3">
+        {used.map((code) => (
+          <label key={code} className="flex items-center gap-2 text-sm">
+            1 {code} =
+            <DecimalInput
+              value={
+                initial.fxRates?.[code] != null ? Math.round(initial.fxRates[code] * 1e6) : null
+              }
+              onCommit={(micros) => {
+                const next = { ...(initial.fxRates ?? {}) };
+                if (micros && micros > 0) next[code] = micros / 1e6;
+                else delete next[code];
+                save({ fxRates: next });
+              }}
+              scale={1_000_000}
+              maxDecimals={6}
+              suffix={initial.baseCurrency}
+              className="w-32"
+              testId={`fx-${code}`}
+            />
+          </label>
+        ))}
+      </div>
+    </Field>
   );
 }
 
@@ -176,7 +226,7 @@ function PreferencesForm({ initial }: { initial: Settings['preferences'] }) {
               value={initial.defaultSourceLang}
               onChange={(e) => save({ defaultSourceLang: e.target.value })}
             >
-              {LANGUAGES.map((l) => (
+              {languageOptions(initial.defaultSourceLang).map((l) => (
                 <option key={l.code} value={l.code}>
                   {l.label}
                 </option>
@@ -188,7 +238,7 @@ function PreferencesForm({ initial }: { initial: Settings['preferences'] }) {
               value={initial.defaultTargetLang}
               onChange={(e) => save({ defaultTargetLang: e.target.value })}
             >
-              {LANGUAGES.map((l) => (
+              {languageOptions(initial.defaultTargetLang).map((l) => (
                 <option key={l.code} value={l.code}>
                   {l.label}
                 </option>
@@ -196,6 +246,7 @@ function PreferencesForm({ initial }: { initial: Settings['preferences'] }) {
             </NativeSelect>
           </Field>
         </div>
+        <FxRatesField initial={initial} save={save} />
         <label className="flex items-center gap-3 text-sm sm:col-span-2">
           <Switch
             checked={initial.notifications}

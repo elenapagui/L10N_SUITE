@@ -65,7 +65,7 @@ test('facturación: encargo entregado → factura registrada → cobrada', async
   expect(jobAfter.billingStatus).toBe('paid');
 });
 
-test('gastos e informes', async ({ page }) => {
+test('gastos e informes', async ({ page, request }) => {
   await openApp(page, '#/finanzas/gastos');
   await page.getByTestId('new-expense').click();
   await page.getByTestId('expense-concept').fill('Licencia de software E2E');
@@ -86,4 +86,32 @@ test('gastos e informes', async ({ page }) => {
   await page.getByTestId('monthly-chart').getByRole('button', { name: 'Ver como tabla' }).click();
   await expect(page.getByTestId('monthly-chart').getByRole('table')).toBeVisible();
   await expect(page.getByTestId('model-303')).toBeVisible();
+
+  // Previsión de cobros: un encargo entregado y sin facturar aparece como partida.
+  const client = await (
+    await request.post('/api/clients', {
+      data: { name: 'Cliente previsión', paymentTermsDays: 30, vatPct: 21, irpfPct: 15 },
+    })
+  ).json();
+  const project = await (
+    await request.post('/api/projects', { data: { name: 'Previsión', clientId: client.id } })
+  ).json();
+  const job = await (
+    await request.post('/api/jobs', {
+      data: {
+        projectId: project.id,
+        title: 'Entrega para la previsión',
+        unit: 'flat',
+        rateMicros: 100_000_000,
+      },
+    })
+  ).json();
+  await request.patch(`/api/jobs/${job.id}`, { data: { status: 'delivered' } });
+  await page.reload();
+  const forecast = page.getByTestId('forecast');
+  await expect(forecast.getByText('Previsión de cobros')).toBeVisible();
+  await forecast.getByText(/Ver las \d+ partidas/).click();
+  await expect(page.getByTestId('forecast-items')).toContainText('Entrega para la previsión');
+  // 100 € + 21 % IVA − 15 % IRPF
+  await expect(page.getByTestId('forecast-items')).toContainText('106,00');
 });
