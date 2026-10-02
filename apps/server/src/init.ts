@@ -15,6 +15,9 @@ import { registerTemplateEntity } from './modules/work/templates';
 import { registerTimeEntity } from './modules/work/time';
 import { registerInvoiceEntity } from './modules/finance/invoices';
 import { registerExpenseEntity } from './modules/finance/expenses';
+import { registerPageEntity } from './modules/knowledge/pages';
+import { registerResourceEntities } from './modules/knowledge/resources';
+import { purgeDeletedRows, registerTableEntity } from './modules/knowledge/tables';
 
 /** Registra en la papelera, la búsqueda, etc. todos los tipos de ficha de los módulos. */
 export function registerEntities(): void {
@@ -30,6 +33,9 @@ export function registerEntities(): void {
   registerTemplateEntity();
   registerInvoiceEntity();
   registerExpenseEntity();
+  registerPageEntity();
+  registerTableEntity();
+  registerResourceEntities();
 }
 
 /**
@@ -51,6 +57,6 @@ export async function initContext(ctx: AppContext): Promise<void> {
     await createBackup(ctx, 'pre-migration');
   }
   ctx.migrate();
-  const purged = purgeExpired(ctx);
+  const purged = purgeExpired(ctx) + purgeDeletedRows(ctx);
   if (purged > 0) ctx.logger.info({ purged }, 'Papelera: elementos caducados eliminados');
 }

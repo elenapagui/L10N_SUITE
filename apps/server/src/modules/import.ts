@@ -409,6 +409,22 @@ export function commitImport(
 }
 
 /** Deshace una importación: borra definitivamente las fichas que creó. */
+/** Registra una importación para poder deshacerla de una vez desde Ajustes → Importar. */
+export function recordImportBatch(
+  ctx: AppContext,
+  kind: string,
+  fileName: string | null,
+  items: Created[],
+): string {
+  const id = newId();
+  ctx.sqlite
+    .prepare(
+      'INSERT INTO import_batches (id, kind, file_name, row_count, items, created_at) VALUES (?, ?, ?, ?, ?, ?)',
+    )
+    .run(id, kind, fileName, items.length, JSON.stringify(items), ctx.nowISO());
+  return id;
+}
+
 export function undoImport(ctx: AppContext, batchId: string): number {
   const row = ctx.sqlite
     .prepare('SELECT items, undone_at AS undoneAt FROM import_batches WHERE id = ?')
@@ -424,8 +440,24 @@ export function undoImport(ctx: AppContext, batchId: string): number {
     tag: 'tags',
     task_list: 'task_lists',
     area: 'areas',
+    page: 'pages',
+    custom_table: 'custom_tables',
+    glossary_term: 'glossary_terms',
+    character: 'characters',
   };
-  const order = ['task', 'project', 'game', 'client', 'tag', 'task_list', 'area'];
+  const order = [
+    'glossary_term',
+    'character',
+    'page',
+    'custom_table',
+    'task',
+    'project',
+    'game',
+    'client',
+    'tag',
+    'task_list',
+    'area',
+  ];
   const tx = ctx.sqlite.transaction(() => {
     for (const type of order) {
       for (const item of items.filter((i) => i.entityType === type)) {
@@ -442,6 +474,11 @@ export function undoImport(ctx: AppContext, batchId: string): number {
           // Las tareas que se hayan movido a esa área después se quedan sin área.
           ctx.sqlite
             .prepare('UPDATE tasks SET area_id = NULL WHERE area_id = ?')
+            .run(item.entityId);
+        }
+        if (type === 'page') {
+          ctx.sqlite
+            .prepare("DELETE FROM links WHERE source_type = 'page' AND source_id = ?")
             .run(item.entityId);
         }
         ctx.sqlite

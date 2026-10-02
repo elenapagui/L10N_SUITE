@@ -65,9 +65,18 @@ export function olderMigrations(count: number): string {
 /** Cuerpo multipart/form-data para app.inject. */
 export function multipart(
   files: { field?: string; filename: string; content: Buffer | string; type?: string }[],
+  fields: Record<string, string> = {},
 ) {
   const boundary = `----l10n${Math.random().toString(16).slice(2)}`;
   const chunks: Buffer[] = [];
+  // Los campos van antes del archivo para que el servidor los lea junto con él.
+  for (const [name, value] of Object.entries(fields)) {
+    chunks.push(
+      Buffer.from(
+        `--${boundary}\r\nContent-Disposition: form-data; name="${name}"\r\n\r\n${value}\r\n`,
+      ),
+    );
+  }
   for (const f of files) {
     chunks.push(
       Buffer.from(

@@ -28,6 +28,10 @@ import { queryRoutes } from './modules/work/queries';
 import { taskRoutes } from './modules/work/tasks';
 import { templateRoutes } from './modules/work/templates';
 import { timeRoutes } from './modules/work/time';
+import { notionRoutes } from './modules/knowledge/notion';
+import { pageRoutes } from './modules/knowledge/pages';
+import { resourceRoutes } from './modules/knowledge/resources';
+import { tableRoutes } from './modules/knowledge/tables';
 import './types';
 
 export interface BuildOptions extends ConfigOptions {
@@ -122,6 +126,10 @@ export async function buildApp(options: BuildOptions): Promise<FastifyInstance> 
   await app.register(dashboardRoutes);
   await app.register(importRoutes);
   await app.register(invoiceRoutes);
+  await app.register(pageRoutes);
+  await app.register(tableRoutes);
+  await app.register(resourceRoutes);
+  await app.register(notionRoutes);
   await app.register(expenseRoutes);
   await app.register(reportRoutes);
   await app.register(summaryRoutes);

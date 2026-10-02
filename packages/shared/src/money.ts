@@ -40,8 +40,8 @@ export function parseDecimal(input: string | number | null | undefined): number 
     s = commas > 1 ? s.replace(/,/g, '') : s.replace(',', '.');
   } else if (lastDot > -1) {
     const dots = s.split('.').length - 1;
-    // «1.234.567» → miles a la española.
-    if (dots > 1) s = s.replace(/\./g, '');
+    // «1.234.567» y «1.200» → miles a la española; «0.075» o «1.5» → decimal.
+    if (dots > 1 || /^-?[1-9]\d{0,2}\.\d{3}$/.test(s)) s = s.replace(/\./g, '');
   }
   if (!/^-?\d*\.?\d+$/.test(s) && !/^-?\d+\.?$/.test(s)) return null;
   const n = Number(s);

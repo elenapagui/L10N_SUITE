@@ -13,3 +13,7 @@ export * from './work/schemas';
 export * from './work/types';
 export * from './import';
 export * from './finance/finance';
+export * from './knowledge/formula';
+export * from './knowledge/tables';
+export * from './knowledge/pages';
+export * from './knowledge/resources';
