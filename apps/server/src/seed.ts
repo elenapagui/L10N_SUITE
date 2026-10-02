@@ -318,6 +318,62 @@ await post('/api/time-entries', {
   note: 'Pasada de LQA en Switch',
 });
 
+// Finanzas: encargos ya facturados de meses anteriores, una factura vencida y gastos.
+const months = (n: number) => {
+  const dt = new Date(`${today}T12:00:00`);
+  dt.setMonth(dt.getMonth() - n, 10);
+  return dt.toISOString().slice(0, 10);
+};
+const past = [
+  { title: 'Diálogos del capítulo 2', volume: 18200, ago: 5, paidAfter: 34 },
+  { title: 'Diálogos del capítulo 3', volume: 21400, ago: 4, paidAfter: 41 },
+  { title: 'Diálogos del capítulo 4', volume: 16800, ago: 3, paidAfter: 29 },
+  { title: 'Evento de San Valentín', volume: 7300, ago: 2, paidAfter: null },
+];
+let invoiceNo = 1;
+for (const p of past) {
+  const job = await post('/api/jobs', {
+    projectId: pGarden.id,
+    title: p.title,
+    unit: 'word',
+    contentType: 'dialogue',
+    dueDate: months(p.ago),
+    volume: p.volume,
+  });
+  await patch(`/api/jobs/${job.id}`, { status: 'delivered', deliveredAt: months(p.ago) });
+  const issueDate = addDaysISO(months(p.ago), 18);
+  const inv = await post('/api/invoices', {
+    number: `${issueDate.slice(0, 4)}-${String(invoiceNo++).padStart(3, '0')}`,
+    clientId: pixel.id,
+    issueDate,
+    jobIds: [job.id],
+  });
+  if (p.paidAfter != null) {
+    await post(`/api/invoices/${inv.id}/pay`, { paidAt: addDaysISO(issueDate, p.paidAfter) });
+  }
+}
+for (const [ago, concept, supplier, category, base, vat] of [
+  [5, 'Licencia anual de memoQ', 'memoQ Ltd.', 'software', 62000, 21],
+  [5, 'Cuota de autónomos', 'Seguridad Social', 'social_security', 29400, 0],
+  [4, 'Cuota de autónomos', 'Seguridad Social', 'social_security', 29400, 0],
+  [4, 'Congreso de traducción audiovisual', 'Universidad', 'training', 12000, 21],
+  [3, 'Cuota de autónomos', 'Seguridad Social', 'social_security', 29400, 0],
+  [3, 'Diccionario coreano-español', 'Librería', 'books', 3846, 4],
+  [2, 'Cuota de autónomos', 'Seguridad Social', 'social_security', 29400, 0],
+  [2, 'Gestoría (trimestre)', 'Asesoría', 'advisor', 9000, 21],
+  [1, 'Cuota de autónomos', 'Seguridad Social', 'social_security', 29400, 0],
+  [1, 'Fibra y móvil', 'Operadora', 'utilities', 4950, 21],
+] as const) {
+  await post('/api/expenses', {
+    date: months(ago),
+    concept,
+    supplier,
+    category,
+    baseCents: base,
+    vatPct: vat,
+  });
+}
+
 for (const [name, color] of [
   ['Urgente', '#ef4444'],
   ['Gacha', '#a855f7'],

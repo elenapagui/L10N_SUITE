@@ -103,6 +103,26 @@ Lo que borras va a la **Papelera**, donde se guarda 30 días. Justo después de 
 - **Calendario:** reúne las entregas y las tareas con fecha. Arrastra un elemento a otro día para cambiar su fecha.
 - **Avisos:** la app avisa de las entregas en menos de 24 horas, las entregas atrasadas y las tareas vencidas. Se pueden desactivar en **Ajustes → Preferencias**.
 
+## Finanzas: facturación, gastos e informes
+
+La app **no emite facturas**: las emites con tu programa de facturación (o tu gestoría) y aquí llevas el seguimiento.
+
+- **Facturación → Por facturar:** los encargos entregados que aún no están en ninguna factura, agrupados por cliente y moneda.
+  - **Resumen para facturar** descarga un Excel con los encargos, volúmenes e importes para copiarlos en tu programa. Lleva el aviso «No es una factura».
+  - **Registrar factura** guarda el número, la fecha, los encargos incluidos y otros conceptos (recargos, gestión de terminología…). El IVA, el IRPF y el vencimiento salen de la ficha del cliente o, si no los tiene, de **Ajustes**. Si la moneda no es la principal, indica el tipo de cambio que aplicas.
+- **Facturación → Facturas:** al abrir una factura puedes marcarla como cobrada (con la fecha de cobro), adjuntar su PDF, descargar el resumen o anularla. Al anularla, sus encargos vuelven a «Por facturar». Las facturas vencidas aparecen en rojo, en el inicio y como aviso.
+- **Gastos:** concepto, fecha, proveedor, categoría, base, IVA soportado y si es deducible. Después de guardar puedes adjuntar el justificante.
+- **Informes:** elige el año para ver:
+  - facturado, cobrado, gastos, rendimiento neto, pendiente de cobro y €/hora efectivo;
+  - un gráfico mensual de lo facturado y los gastos (el botón de la tabla muestra las cifras);
+  - los ingresos por cliente, servicio, juego o par de idiomas;
+  - la antigüedad de los cobros pendientes y los días medios de cobro de cada cliente;
+  - el **resumen trimestral** orientativo de los modelos 303 (IVA) y 130 (IRPF). Es una estimación: revísalo siempre con tu gestoría.
+
+  **Excel para la gestoría** descarga las facturas, los gastos y los resúmenes del año o del trimestre.
+
+- Los importes en otras monedas se convierten a la principal con el tipo de cambio de cada factura o gasto.
+
 ## Importar desde ClickUp, Google Sheets o Excel
 
 En **Ajustes → Importar**:

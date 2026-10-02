@@ -8,14 +8,14 @@ Aplicación de escritorio para dirigir la actividad profesional de traducción d
 
 ## Estado
 
-| Fase | Contenido                                            | Estado          |
-| ---- | ---------------------------------------------------- | --------------- |
-| 0    | Base técnica, app de escritorio, copias de seguridad | ✅ Disponible   |
-| 1    | Proyectos y tareas                                   | En construcción |
-| 2    | Finanzas                                             | Pendiente       |
-| 3    | Páginas y tablas                                     | Pendiente       |
-| 4    | Corpus                                               | Pendiente       |
-| 5    | Académico                                            | Pendiente       |
+| Fase | Contenido                                            | Estado        |
+| ---- | ---------------------------------------------------- | ------------- |
+| 0    | Base técnica, app de escritorio, copias de seguridad | ✅ Disponible |
+| 1    | Proyectos y tareas                                   | ✅ Disponible |
+| 2    | Finanzas                                             | ✅ Disponible |
+| 3    | Páginas y tablas                                     | Pendiente     |
+| 4    | Corpus                                               | Pendiente     |
+| 5    | Académico                                            | Pendiente     |
 
 ## Descargar
 

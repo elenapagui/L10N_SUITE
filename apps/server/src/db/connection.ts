@@ -32,13 +32,20 @@ export function openDatabase(
     readonly: options.readonly ?? false,
     fileMustExist: options.readonly ?? false,
   });
-  if (!options.readonly) {
-    sqlite.pragma('journal_mode = WAL');
-    sqlite.pragma('synchronous = NORMAL');
+  try {
+    if (!options.readonly) {
+      sqlite.pragma('journal_mode = WAL');
+      sqlite.pragma('synchronous = NORMAL');
+    }
+    sqlite.pragma('foreign_keys = ON');
+    sqlite.pragma('busy_timeout = 5000');
+    sqlite.pragma('temp_store = MEMORY');
+  } catch (error) {
+    // Un archivo dañado se abre pero falla al configurarlo: se cierra para no dejarlo bloqueado
+    // (en Windows impediría sustituirlo al restaurar una copia).
+    sqlite.close();
+    throw error;
   }
-  sqlite.pragma('foreign_keys = ON');
-  sqlite.pragma('busy_timeout = 5000');
-  sqlite.pragma('temp_store = MEMORY');
   // X REGEXP Y → regexp(Y, X). Una expresión no válida simplemente no coincide.
   sqlite.function('regexp', { deterministic: true }, (pattern: unknown, value: unknown) => {
     if (typeof pattern !== 'string' || typeof value !== 'string') return 0;

@@ -43,6 +43,12 @@ const WORK_KEYS = [
   'activity',
   'trash',
   'rates',
+  'billing-pending',
+  'invoices',
+  'invoice',
+  'expenses',
+  'finance-overview',
+  'finance-quarter',
 ];
 
 export function useInvalidateWork() {

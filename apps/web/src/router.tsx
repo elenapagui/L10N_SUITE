@@ -8,6 +8,9 @@ import { AppShell } from '@/components/layout/AppShell';
 import { ComingSoon } from '@/components/layout/ComingSoon';
 import { NotFound, RouteError } from '@/components/layout/RouteError';
 import { CalendarPage } from '@/features/calendar/CalendarPage';
+import { ExpensesPage } from '@/features/finance/ExpensesPage';
+import { InvoicesPage } from '@/features/finance/InvoicesPage';
+import { ReportsPage } from '@/features/finance/ReportsPage';
 import { HomePage } from '@/features/home/HomePage';
 import { SettingsPage } from '@/features/settings/SettingsPage';
 import { TrashPage } from '@/features/trash/TrashPage';
@@ -107,6 +110,24 @@ const tasksRoute = createRoute({
   component: TasksPage,
 });
 
+const invoicesRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: '/finanzas/facturas',
+  validateSearch: (search: Record<string, unknown>): { factura?: string } =>
+    typeof search.factura === 'string' ? { factura: search.factura } : {},
+  component: InvoicesPage,
+});
+const expensesRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: '/finanzas/gastos',
+  component: ExpensesPage,
+});
+const reportsRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: '/finanzas/informes',
+  component: ReportsPage,
+});
+
 const routes = [
   homeRoute,
   settingsRoute,
@@ -123,6 +144,9 @@ const routes = [
   queriesRoute,
   calendarRoute,
   tasksRoute,
+  invoicesRoute,
+  expensesRoute,
+  reportsRoute,
 ];
 
 /** Secciones de fases futuras: se muestran como «en construcción». */

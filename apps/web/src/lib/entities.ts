@@ -19,6 +19,10 @@ export function entityRoute(
       return { to: '/trabajo/consultas' };
     case 'time_entry':
       return { to: '/trabajo/tiempo' };
+    case 'invoice':
+      return { to: '/finanzas/facturas', search: { factura: id } };
+    case 'expense':
+      return { to: '/finanzas/gastos' };
     case 'contact':
     case 'rate':
       return { to: '/trabajo/clientes' };

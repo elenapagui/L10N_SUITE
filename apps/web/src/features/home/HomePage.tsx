@@ -137,7 +137,7 @@ export function HomePage() {
         <Spinner />
       ) : (
         <div className="grid gap-6">
-          <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+          <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-5">
             <Stat
               label="Encargos en curso"
               value={d.activeJobCount}
@@ -160,6 +160,21 @@ export function HomePage() {
               value={formatMoney(d.pendingBillingCents, d.baseCurrency)}
               tone={d.pendingBillingCents > 0 ? 'warning' : undefined}
             />
+            <Link
+              to="/finanzas/facturas"
+              className="rounded-lg focus-visible:ring-2 focus-visible:ring-ring"
+            >
+              <Stat
+                label="Pendiente de cobro"
+                value={formatMoney(d.pendingCollectionCents, d.baseCurrency)}
+                hint={
+                  d.overdueInvoiceCount
+                    ? `${d.overdueInvoiceCount} ${d.overdueInvoiceCount === 1 ? 'factura vencida' : 'facturas vencidas'}`
+                    : undefined
+                }
+                tone={d.overdueInvoiceCount ? 'danger' : undefined}
+              />
+            </Link>
           </div>
           <div className="grid gap-6 xl:grid-cols-[3fr_2fr]">
             <div className="grid content-start gap-6">
