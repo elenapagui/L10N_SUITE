@@ -6,3 +6,8 @@ export * from './entities';
 export * from './schemas/common';
 export * from './schemas/settings';
 export * from './schemas/core';
+export * from './work/enums';
+export * from './work/cat';
+export * from './work/recurrence';
+export * from './work/schemas';
+export * from './work/types';

@@ -99,9 +99,16 @@ export function purgeFromTrash(ctx: AppContext, type: string, id: string): void 
   tx();
 }
 
+function tableExists(ctx: AppContext, table: string): boolean {
+  return Boolean(
+    ctx.sqlite.prepare("SELECT 1 FROM sqlite_master WHERE type = 'table' AND name = ?").get(table),
+  );
+}
+
 export function listTrash(ctx: AppContext): TrashItem[] {
   const items: TrashItem[] = [];
   for (const def of registry.values()) {
+    if (!tableExists(ctx, def.table)) continue;
     const rows = ctx.sqlite
       .prepare(
         `SELECT id, ${def.titleSql} AS title, deleted_at AS deletedAt FROM ${def.table} WHERE deleted_at IS NOT NULL`,

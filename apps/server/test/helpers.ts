@@ -24,12 +24,12 @@ export function tempDir(prefix = 'l10n-test-'): string {
 }
 
 export async function createTestApp(
-  options: { dataDir?: string; now?: () => Date } = {},
+  options: { dataDir?: string; now?: () => Date; migrationsDir?: string } = {},
 ): Promise<TestApp> {
   const dataDir = options.dataDir ?? tempDir();
   const app = await buildApp({
     dataDir,
-    migrationsDir: MIGRATIONS_DIR,
+    migrationsDir: options.migrationsDir ?? MIGRATIONS_DIR,
     appVersion: '0.0.0-test',
     now: options.now,
   });
@@ -49,6 +49,17 @@ export async function createTestApp(
       removeDir(dataDir);
     },
   };
+}
+
+/** Copia de las migraciones con solo las `count` primeras: simula una versión anterior de la app. */
+export function olderMigrations(count: number): string {
+  const dir = tempDir('l10n-migraciones-');
+  fs.cpSync(MIGRATIONS_DIR, dir, { recursive: true });
+  const journalPath = path.join(dir, 'meta', '_journal.json');
+  const journal = JSON.parse(fs.readFileSync(journalPath, 'utf8')) as { entries: unknown[] };
+  journal.entries = journal.entries.slice(0, count);
+  fs.writeFileSync(journalPath, JSON.stringify(journal));
+  return dir;
 }
 
 /** Cuerpo multipart/form-data para app.inject. */

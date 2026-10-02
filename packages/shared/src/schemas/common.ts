@@ -51,3 +51,20 @@ export interface Paginated<T> {
   limit: number;
   offset: number;
 }
+
+/**
+ * Esquema para actualizaciones parciales (PATCH): todos los campos opcionales y SIN valores
+ * por defecto. Con `.partial()` Zod 4 mantiene los `.default()`, y un PATCH que solo cambia
+ * el título restablecería, por ejemplo, el estado de un encargo.
+ */
+export function patchSchema<T extends z.ZodRawShape>(
+  schema: z.ZodObject<T>,
+): ReturnType<z.ZodObject<T>['partial']> {
+  const shape: Record<string, z.ZodType> = {};
+  for (const [key, field] of Object.entries(schema.shape)) {
+    let f = field as z.ZodType;
+    while (f instanceof z.ZodDefault) f = f.unwrap() as z.ZodType;
+    shape[key] = f.optional();
+  }
+  return z.object(shape) as unknown as ReturnType<z.ZodObject<T>['partial']>;
+}

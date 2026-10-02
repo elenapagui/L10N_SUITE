@@ -5,11 +5,27 @@ import { registerAttachmentEntity } from './services/attachments';
 import { createBackup } from './services/backup/backups';
 import { purgeExpired } from './services/trash';
 import { registerTagEntity } from './modules/tags';
+import { registerClientEntities } from './modules/work/clients';
+import { registerGameEntity } from './modules/work/games';
+import { registerJobEntity } from './modules/work/jobs';
+import { registerProjectEntity } from './modules/work/projects';
+import { registerQueryEntity } from './modules/work/queries';
+import { registerTaskEntities } from './modules/work/tasks';
+import { registerTemplateEntity } from './modules/work/templates';
+import { registerTimeEntity } from './modules/work/time';
 
 /** Registra en la papelera, la búsqueda, etc. todos los tipos de ficha de los módulos. */
 export function registerEntities(): void {
   registerAttachmentEntity();
   registerTagEntity();
+  registerClientEntities();
+  registerGameEntity();
+  registerProjectEntity();
+  registerJobEntity();
+  registerTaskEntities();
+  registerTimeEntity();
+  registerQueryEntity();
+  registerTemplateEntity();
 }
 
 /**

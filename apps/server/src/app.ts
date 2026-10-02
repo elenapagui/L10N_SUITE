@@ -14,6 +14,15 @@ import { settingsRoutes } from './modules/settings';
 import { systemRoutes } from './modules/system';
 import { tagRoutes } from './modules/tags';
 import { trashRoutes } from './modules/trash';
+import { clientRoutes } from './modules/work/clients';
+import { dashboardRoutes } from './modules/work/dashboard';
+import { gameRoutes } from './modules/work/games';
+import { jobRoutes } from './modules/work/jobs';
+import { projectRoutes } from './modules/work/projects';
+import { queryRoutes } from './modules/work/queries';
+import { taskRoutes } from './modules/work/tasks';
+import { templateRoutes } from './modules/work/templates';
+import { timeRoutes } from './modules/work/time';
 import './types';
 
 export interface BuildOptions extends ConfigOptions {
@@ -97,6 +106,15 @@ export async function buildApp(options: BuildOptions): Promise<FastifyInstance> 
   await app.register(attachmentRoutes);
   await app.register(backupRoutes);
   await app.register(trashRoutes);
+  await app.register(clientRoutes);
+  await app.register(gameRoutes);
+  await app.register(projectRoutes);
+  await app.register(jobRoutes);
+  await app.register(taskRoutes);
+  await app.register(timeRoutes);
+  await app.register(queryRoutes);
+  await app.register(templateRoutes);
+  await app.register(dashboardRoutes);
 
   if (config.webDir && fs.existsSync(path.join(config.webDir, 'index.html'))) {
     await app.register(fastifyStatic, { root: config.webDir, prefix: '/', index: 'index.html' });

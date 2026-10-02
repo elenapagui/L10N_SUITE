@@ -1,6 +1,5 @@
 import fs from 'node:fs';
 import path from 'node:path';
-import Database from 'better-sqlite3';
 import { afterEach, describe, expect, it } from 'vitest';
 import { backupFileName, parseBackupFileName } from '../src/services/backup/backups';
 import {
@@ -8,7 +7,14 @@ import {
   selectBackupsToDelete,
   type RotatableBackup,
 } from '../src/services/backup/rotation';
-import { createTestApp, multipart, removeDir, tempDir, type TestApp } from './helpers';
+import {
+  createTestApp,
+  multipart,
+  olderMigrations,
+  removeDir,
+  tempDir,
+  type TestApp,
+} from './helpers';
 
 const apps: TestApp[] = [];
 async function open(options: Parameters<typeof createTestApp>[0] = {}) {
@@ -226,18 +232,16 @@ describe('copia completa', () => {
 
 describe('arranque', () => {
   it('hace una copia antes de migrar una base de datos antigua', async () => {
-    const t = await open();
+    // Base de datos creada por una «versión anterior» (solo con las dos primeras migraciones).
+    const old = olderMigrations(2);
+    const t = await open({ migrationsDir: old });
     await t.app.inject({ method: 'POST', url: '/api/tags', payload: { name: 'Dato antiguo' } });
+    expect(t.app.ctx.schemaVersion()).toBe(2);
     await t.close();
-    // Se simula una base de datos creada por una versión anterior (sin la última migración).
-    const db = new Database(path.join(t.dataDir, 'datos', 'l10n.db'));
-    db.exec('DROP TABLE search_index');
-    db.prepare(
-      'DELETE FROM __drizzle_migrations WHERE created_at = (SELECT MAX(created_at) FROM __drizzle_migrations)',
-    ).run();
-    db.close();
+    removeDir(old);
 
     const again = await open({ dataDir: t.dataDir });
+    expect(again.app.ctx.schemaVersion()).toBeGreaterThan(2);
     const list = (await again.app.inject('/api/backups')).json();
     expect(list.items.map((b: { kind: string }) => b.kind)).toContain('pre-migration');
     expect((await again.app.inject('/api/tags')).json()).toHaveLength(1);

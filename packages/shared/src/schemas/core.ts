@@ -1,5 +1,5 @@
 import { z } from 'zod';
-import { colorSchema, entityTypeSchema, idSchema, requiredText } from './common';
+import { colorSchema, entityTypeSchema, idSchema, patchSchema, requiredText } from './common';
 
 export const tagInputSchema = z.object({
   name: requiredText('Nombre', 60),
@@ -7,7 +7,7 @@ export const tagInputSchema = z.object({
 });
 export type TagInput = z.infer<typeof tagInputSchema>;
 
-export const tagUpdateSchema = tagInputSchema.partial();
+export const tagUpdateSchema = patchSchema(tagInputSchema);
 
 export const taggingInputSchema = z.object({
   entityType: entityTypeSchema,
