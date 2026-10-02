@@ -31,6 +31,7 @@ export const ENTITY_TYPES = {
   },
   publication: { label: 'Publicación', plural: 'Publicaciones', route: '/academico/publicaciones' },
   journal: { label: 'Revista', plural: 'Revistas', route: '/academico/revistas' },
+  submission: { label: 'Envío', plural: 'Envíos', route: '/academico/publicaciones' },
   reference: { label: 'Referencia', plural: 'Referencias', route: '/academico/biblioteca' },
   attachment: { label: 'Adjunto', plural: 'Adjuntos', route: '/ajustes' },
   tag: { label: 'Etiqueta', plural: 'Etiquetas', route: '/ajustes/etiquetas' },

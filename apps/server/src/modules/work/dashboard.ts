@@ -110,6 +110,90 @@ export function calendarEvents(ctx: AppContext, from: string, to: string): Calen
       subtitle: [j.projectName, j.clientName].filter(Boolean).join(' · '),
     });
   }
+  // Plazos académicos y vencimientos de cobro (las tablas pueden no existir en bases antiguas).
+  const has = (t: string) =>
+    Boolean(
+      ctx.sqlite.prepare("SELECT 1 FROM sqlite_master WHERE type = 'table' AND name = ?").get(t),
+    );
+  if (has('publications')) {
+    const pubs = ctx.sqlite
+      .prepare(
+        `SELECT id, title, deadline, status FROM publications
+         WHERE deleted_at IS NULL AND deadline >= ? AND deadline <= ?`,
+      )
+      .all(from, to) as { id: string; title: string; deadline: string; status: string }[];
+    for (const p of pubs) {
+      events.push({
+        id: `publication:${p.id}`,
+        kind: 'publication',
+        title: `Plazo: ${p.title}`,
+        date: p.deadline,
+        time: null,
+        color: '#8b5cf6',
+        done: ['accepted', 'in_press', 'published', 'rejected'].includes(p.status),
+        entityId: p.id,
+        subtitle: 'Publicación',
+      });
+    }
+    const subs = ctx.sqlite
+      .prepare(
+        `SELECT s.id, s.publication_id AS publicationId, s.revision_due AS due, p.title,
+           coalesce(j.name, s.venue) AS venue,
+           EXISTS (SELECT 1 FROM submissions s2 WHERE s2.publication_id = s.publication_id AND s2.submitted_at > s.submitted_at) AS done
+         FROM submissions s JOIN publications p ON p.id = s.publication_id AND p.deleted_at IS NULL
+         LEFT JOIN journals j ON j.id = s.journal_id
+         WHERE s.revision_due >= ? AND s.revision_due <= ?`,
+      )
+      .all(from, to) as {
+      id: string;
+      publicationId: string;
+      due: string;
+      title: string;
+      venue: string | null;
+      done: number;
+    }[];
+    for (const s of subs) {
+      events.push({
+        id: `submission:${s.id}`,
+        kind: 'submission',
+        title: `Entregar cambios: ${s.title}`,
+        date: s.due,
+        time: null,
+        color: '#8b5cf6',
+        done: s.done === 1,
+        entityId: s.publicationId,
+        subtitle: s.venue,
+      });
+    }
+  }
+  if (has('invoices')) {
+    const invs = ctx.sqlite
+      .prepare(
+        `SELECT i.id, i.number, i.due_date AS due, i.status, c.name AS client FROM invoices i
+         LEFT JOIN clients c ON c.id = i.client_id
+         WHERE i.deleted_at IS NULL AND i.status <> 'cancelled' AND i.due_date >= ? AND i.due_date <= ?`,
+      )
+      .all(from, to) as {
+      id: string;
+      number: string;
+      due: string;
+      status: string;
+      client: string | null;
+    }[];
+    for (const i of invs) {
+      events.push({
+        id: `invoice:${i.id}`,
+        kind: 'invoice',
+        title: `Cobro: factura ${i.number}`,
+        date: i.due,
+        time: null,
+        color: '#059669',
+        done: i.status === 'paid',
+        entityId: i.id,
+        subtitle: i.client,
+      });
+    }
+  }
   return events.sort((a, b) =>
     (a.date + (a.time ?? '99')).localeCompare(b.date + (b.time ?? '99')),
   );

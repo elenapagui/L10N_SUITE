@@ -627,6 +627,126 @@ await app.inject({
   }
 }
 
+// Académico: revistas, biblioteca (importada en BibTeX) y dos publicaciones en curso.
+const jTrans = await post('/api/journals', {
+  name: 'MonTI. Monografías de Traducción e Interpretación',
+  issn: '1889-4178',
+  publisher: 'Universitat d’Alacant',
+  indexing: ['Scopus', 'ESCI', 'Dialnet'],
+  quartile: 'Q2',
+  openAccess: 'diamond',
+  citationStyle: 'APA 7',
+  languages: 'Español, inglés, catalán, francés, alemán',
+  wordLimit: 9000,
+});
+const jJial = await post('/api/journals', {
+  name: 'The Journal of Internationalization and Localization',
+  issn: '2032-6904',
+  publisher: 'John Benjamins',
+  indexing: ['Scopus'],
+  openAccess: 'hybrid',
+  languages: 'Inglés',
+});
+const bib = `@book{bernal2015,
+  author = {Bernal-Merino, Miguel {\\'A}.},
+  title = {Translation and Localisation in Video Games: Making Entertainment Software Global},
+  publisher = {Routledge},
+  address = {New York},
+  year = {2015},
+  doi = {10.4324/9781315752334}
+}
+@article{mangiron2006,
+  author = {Mangiron, Carme and O'Hagan, Minako},
+  title = {Game Localisation: Unleashing Imagination with {\\textquoteleft}Restricted{\\textquoteright} Translation},
+  journal = {The Journal of Specialised Translation},
+  year = {2006},
+  number = {6},
+  pages = {10--21}
+}
+@book{ohagan2013,
+  author = {O'Hagan, Minako and Mangiron, Carme},
+  title = {Game Localization: Translating for the Global Digital Entertainment Industry},
+  publisher = {John Benjamins},
+  year = {2013},
+  doi = {10.1075/btl.106}
+}
+@incollection{mejias2014,
+  author = {Mejías-Climent, Laura},
+  title = {La localización de videojuegos en España},
+  booktitle = {Traducción y accesibilidad en los videojuegos},
+  editor = {Pujol, Jordi},
+  publisher = {Comares},
+  address = {Granada},
+  year = {2019},
+  pages = {45--67}
+}
+@phdthesis{kim2020,
+  author = {Kim, Ji-hye},
+  title = {Honorifics in Korean Game Localisation},
+  school = {Universidad Autónoma de Barcelona},
+  year = {2020}
+}`;
+const imported = await post<{ ids: string[] }>('/api/references/import', { text: bib });
+const col = await post('/api/reference-collections', {
+  name: 'Tesis: honoríficos',
+  color: '#0ea5e9',
+});
+await post(`/api/reference-collections/${col.id}/items`, { add: imported.ids.slice(2) });
+await patch(`/api/references/${imported.ids[0]}`, {
+  readStatus: 'read',
+  rating: 5,
+  notes: 'Obra de referencia: capítulo 3 sobre tipos de texto en los videojuegos.',
+  gameIds: [aether.id],
+});
+await post('/api/quotes', {
+  referenceId: imported.ids[0],
+  text: 'Video games are a multimedia product…',
+  page: '42',
+  comment: 'Para la introducción',
+});
+const art = await post('/api/publications', {
+  title: 'El tratamiento de los honoríficos coreanos en la localización de juegos gacha al español',
+  type: 'article',
+  status: 'drafting',
+  journalId: jTrans.id,
+  deadline: d(20),
+  keywords: ['localización de videojuegos', 'coreano', 'honoríficos', 'estudios de corpus'],
+  language: 'Español',
+  authors: [{ name: 'Yo', isMe: true, corresponding: true }],
+  gameIds: [aether.id, neon.id],
+  referenceIds: imported.ids,
+});
+await post('/api/tasks', {
+  title: 'Terminar el apartado de metodología',
+  areaId: 'area-academic',
+  relatedType: 'publication',
+  relatedId: art.id,
+  dueDate: d(6),
+});
+const conf = await post('/api/publications', {
+  title: 'Gacha y traducción: un análisis de corpus KO-ES',
+  type: 'conference',
+  status: 'submitted',
+  keywords: ['gacha', 'corpus paralelo'],
+  authors: [{ name: 'Yo', isMe: true, corresponding: true }],
+  referenceIds: imported.ids.slice(1, 3),
+});
+await post('/api/submissions', {
+  publicationId: conf.id,
+  journalId: jJial.id,
+  manuscriptId: 'JIAL-2026-031',
+  submittedAt: d(-75),
+  decision: 'major',
+  decisionAt: d(-12),
+  revisionDue: d(18),
+  notes: 'Revisor 2 pide ampliar el corpus y justificar la selección de juegos.',
+});
+await post('/api/publications', {
+  title: 'Personajes y género gramatical en la localización KO→ES',
+  type: 'article',
+  status: 'idea',
+});
+
 for (const [name, color] of [
   ['Urgente', '#ef4444'],
   ['Gacha', '#a855f7'],

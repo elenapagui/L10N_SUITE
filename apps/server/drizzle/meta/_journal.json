@@ -64,6 +64,13 @@
       "when": 1790961432283,
       "tag": "0008_corpus_busqueda",
       "breakpoints": true
+    },
+    {
+      "idx": 9,
+      "version": "6",
+      "when": 1790963128659,
+      "tag": "0009_academico",
+      "breakpoints": true
     }
   ]
 }

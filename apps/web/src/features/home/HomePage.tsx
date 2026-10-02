@@ -12,6 +12,7 @@ import { useBackups } from '@/features/settings/BackupsPanel';
 import { Stat } from '@/features/work/shared';
 import { TaskRow } from '@/features/work/tasks/TaskRow';
 import { TaskQuickAdd } from '@/features/work/tasks/TaskQuickAdd';
+import { ResearchCard } from './ResearchCard';
 import { api } from '@/lib/api';
 import { formatHours } from '@/lib/format';
 
@@ -243,6 +244,7 @@ export function HomePage() {
                   ))}
                 </CardContent>
               </Card>
+              <ResearchCard />
               <Card>
                 <CardHeader>
                   <CardTitle>Actividad reciente</CardTitle>

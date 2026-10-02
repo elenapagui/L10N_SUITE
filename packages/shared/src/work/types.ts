@@ -276,7 +276,7 @@ export interface Template extends Timestamps {
 
 export interface CalendarEvent {
   id: string;
-  kind: 'task' | 'job';
+  kind: 'task' | 'job' | 'publication' | 'submission' | 'invoice';
   title: string;
   date: string;
   time: string | null;

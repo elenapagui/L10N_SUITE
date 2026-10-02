@@ -11,7 +11,7 @@ test('muestra el inicio y navega por la barra lateral', async ({ page }) => {
   await page.getByTestId('nav-/trabajo/proyectos').click();
   await expect(page.getByRole('heading', { name: 'Proyectos' })).toBeVisible();
   await page.getByTestId('nav-/academico/publicaciones').click();
-  await expect(page.getByText('Esta sección está en construcción')).toBeVisible();
+  await expect(page.getByRole('heading', { name: 'Publicaciones' })).toBeVisible();
   await page.getByTestId('nav-/ajustes').click();
   await expect(page.getByRole('heading', { name: 'Ajustes' })).toBeVisible();
 });

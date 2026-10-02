@@ -1,6 +1,13 @@
 import { useMemo, useState } from 'react';
 import { useNavigate } from '@tanstack/react-router';
-import { CalendarDays, ChevronLeft, ChevronRight, Package } from 'lucide-react';
+import {
+  CalendarDays,
+  GraduationCap,
+  Receipt,
+  ChevronLeft,
+  ChevronRight,
+  Package,
+} from 'lucide-react';
 import { addDaysISO, toISODate, todayISO, type CalendarEvent } from '@l10n/shared';
 import { Button } from '@/components/ui/button';
 import { Page, PageHeader } from '@/components/layout/PageHeader';
@@ -31,12 +38,16 @@ export function CalendarPage() {
   const navigate = useNavigate();
   const [dragOver, setDragOver] = useState<string | null>(null);
 
-  const move = useApiMutation((v: { kind: string; id: string; date: string }) =>
-    api(v.kind === 'task' ? `/tasks/${v.id}` : `/jobs/${v.id}`, {
+  const move = useApiMutation((v: { kind: string; id: string; date: string }) => {
+    if (v.kind === 'publication') {
+      return api(`/publications/${v.id}`, { method: 'PATCH', body: { deadline: v.date } });
+    }
+    if (v.kind !== 'task' && v.kind !== 'job') return Promise.resolve(null);
+    return api(v.kind === 'task' ? `/tasks/${v.id}` : `/jobs/${v.id}`, {
       method: 'PATCH',
       body: { dueDate: v.date },
-    }),
-  );
+    });
+  });
 
   const byDay = useMemo(() => {
     const map = new Map<string, CalendarEvent[]>();
@@ -60,7 +71,16 @@ export function CalendarPage() {
 
   const open = (e: CalendarEvent) => {
     if (e.kind === 'task') openTask(e.entityId);
-    else void navigate({ to: '/trabajo/encargos/$jobId', params: { jobId: e.entityId } });
+    else if (e.kind === 'job') {
+      void navigate({ to: '/trabajo/encargos/$jobId', params: { jobId: e.entityId } });
+    } else if (e.kind === 'invoice') {
+      void navigate({ to: '/finanzas/facturas', search: { factura: e.entityId } });
+    } else {
+      void navigate({
+        to: '/academico/publicaciones/$publicationId',
+        params: { publicationId: e.entityId },
+      });
+    }
   };
 
   return (
@@ -68,7 +88,7 @@ export function CalendarPage() {
       <PageHeader
         title="Calendario"
         icon={<CalendarDays />}
-        description="Entregas de encargos y tareas con fecha. Arrastra un elemento a otro día para cambiar su fecha."
+        description="Entregas, tareas, plazos académicos y vencimientos de cobro. Arrastra un elemento a otro día para cambiar su fecha."
       />
       <div className="mb-3 flex items-center gap-2">
         <Button variant="outline" size="icon" aria-label="Mes anterior" onClick={() => shift(-1)}>
@@ -134,7 +154,7 @@ export function CalendarPage() {
                     <button
                       key={e.id}
                       type="button"
-                      draggable
+                      draggable={e.kind !== 'submission' && e.kind !== 'invoice'}
                       onDragStart={(ev) =>
                         ev.dataTransfer.setData('text/plain', `${e.kind}:${e.entityId}`)
                       }
@@ -145,11 +165,19 @@ export function CalendarPage() {
                         e.done && 'line-through opacity-60',
                         e.kind === 'job'
                           ? 'bg-primary/15 font-medium text-primary'
-                          : 'hover:bg-muted',
+                          : e.kind === 'publication' || e.kind === 'submission'
+                            ? 'bg-violet-500/10 font-medium text-violet-700 dark:text-violet-300'
+                            : e.kind === 'invoice'
+                              ? 'bg-emerald-500/10 text-emerald-700 dark:text-emerald-300'
+                              : 'hover:bg-muted',
                       )}
                     >
                       {e.kind === 'job' ? (
                         <Package className="size-3 shrink-0" />
+                      ) : e.kind === 'publication' || e.kind === 'submission' ? (
+                        <GraduationCap className="size-3 shrink-0" />
+                      ) : e.kind === 'invoice' ? (
+                        <Receipt className="size-3 shrink-0" />
                       ) : (
                         <span
                           className="size-2 shrink-0 rounded-full"

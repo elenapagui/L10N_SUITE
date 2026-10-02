@@ -15,7 +15,7 @@ Aplicación de escritorio para dirigir la actividad profesional de traducción d
 | 2    | Finanzas                                             | ✅ Disponible |
 | 3    | Páginas y tablas                                     | ✅ Disponible |
 | 4    | Corpus                                               | ✅ Disponible |
-| 5    | Académico                                            | Pendiente     |
+| 5    | Académico                                            | ✅ Disponible |
 
 ## Descargar
 

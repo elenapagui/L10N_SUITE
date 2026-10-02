@@ -1,5 +1,6 @@
 import type { LucideIcon } from 'lucide-react';
 import {
+  Newspaper,
   BookOpen,
   Building2,
   CalendarDays,
@@ -142,6 +143,13 @@ export const NAV_SECTIONS: NavSection[] = [
         keywords: 'artículos revistas',
       },
       {
+        label: 'Revistas',
+        to: '/academico/revistas',
+        icon: Newspaper,
+        phase: 5,
+        keywords: 'revistas issn indexación cuartil',
+      },
+      {
         label: 'Biblioteca',
         to: '/academico/biblioteca',
         icon: BookOpen,
@@ -165,4 +173,4 @@ export const NAV_FOOTER: NavItem[] = [
 export const ALL_NAV_ITEMS: NavItem[] = [...NAV_SECTIONS.flatMap((s) => s.items), ...NAV_FOOTER];
 
 /** Fases ya disponibles en esta versión. */
-export const AVAILABLE_PHASE = 4;
+export const AVAILABLE_PHASE = 5;

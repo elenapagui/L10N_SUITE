@@ -19,3 +19,8 @@ export * from './knowledge/pages';
 export * from './knowledge/resources';
 export * from './corpus/corpus';
 export * from './corpus/text';
+export * from './academic/csl';
+export * from './academic/bibtex';
+export * from './academic/ris';
+export * from './academic/apa';
+export * from './academic/academic';

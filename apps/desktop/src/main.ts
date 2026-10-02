@@ -95,6 +95,8 @@ function createWindow(): BrowserWindow {
       sandbox: true,
       nodeIntegration: false,
       spellcheck: true,
+      // Visor de PDF integrado de Chromium (para los PDF de la biblioteca).
+      plugins: true,
       additionalArguments: [`--l10n-version=${app.getVersion()}`],
     },
   });

@@ -63,6 +63,14 @@ const WORK_KEYS = [
   'corpus-stats',
   'corpus-frequencies',
   'corpus-versions',
+  'publications',
+  'publication',
+  'submissions',
+  'journals',
+  'references',
+  'reference',
+  'reference-collections',
+  'quotes',
 ];
 
 export function useInvalidateWork() {

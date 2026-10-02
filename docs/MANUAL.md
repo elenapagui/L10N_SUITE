@@ -100,7 +100,7 @@ Lo que borras va a la **Papelera**, donde se guarda 30 días. Justo después de 
 
 - **Cronómetro:** el de la barra superior funciona con cualquier proyecto, encargo o tarea, y solo hay uno en marcha. También puedes añadir tiempo a mano en **Tiempo**.
 - **Datos de cada encargo:** muestra el tiempo dedicado y el €/hora efectivo.
-- **Calendario:** reúne las entregas y las tareas con fecha. Arrastra un elemento a otro día para cambiar su fecha.
+- **Calendario:** reúne las entregas, las tareas con fecha, los plazos de tus publicaciones, las fechas para enviar cambios a una revista y los vencimientos de cobro de las facturas. Arrastra una entrega, una tarea o un plazo a otro día para cambiar su fecha.
 - **Avisos:** la app avisa de las entregas en menos de 24 horas, las entregas atrasadas y las tareas vencidas. Se pueden desactivar en **Ajustes → Preferencias**.
 
 ## Finanzas: facturación, gastos e informes
@@ -201,6 +201,39 @@ Número de juegos, documentos, segmentos y anotaciones; por idioma, caracteres (
 
 - **Exportar:** TMX, TXT por idioma (un segmento por línea, también un archivo por juego, para AntConc, Sketch Engine o LancsBox), Excel, CSV o JSON, del corpus completo o de un subcorpus.
 - **Versiones:** fija el estado del corpus en una fecha («v0.3»). Cada versión guarda un ZIP con TMX, TXT, CSV y un manifiesto, y te da el texto para citarla en tus artículos.
+
+## Académico
+
+### Publicaciones
+
+- En **Publicaciones** cada artículo, capítulo, ponencia, reseña o libro es una tarjeta del **tablero**. El tablero tiene una columna por estado (idea → esquema → redacción → revisión interna → enviado → revisión por pares → cambios solicitados → reenviado → aceptado → en prensa → publicado, más «rechazado o reorientado»). Arrastra la tarjeta para cambiarla de estado. La vista **Lista** muestra lo mismo en una tabla. Arriba aparecen los próximos plazos.
+- **Nueva publicación** crea la ficha con tu nombre en la autoría (lo toma de **Ajustes → Perfil**). La ficha tiene varias pestañas:
+  - **Ficha:** tipo, revista, plazo, idioma, extensión, palabras clave, resumen, versión del corpus que has usado, juegos estudiados, DOI, URL y la cita final para tu CV. En **Autoría** puedes añadir coautores y coautoras con su afiliación y ORCID, cambiar el orden y marcar la autoría de correspondencia (★).
+  - **Envíos:** cada envío a una revista o congreso, con el ID del manuscrito, las fechas, la decisión, el plazo para enviar los cambios y notas (informes de revisión, carta de respuesta). Cada envío tiene sus propios archivos. La decisión actualiza sola el estado de la publicación: «Cambios mayores» la pasa a «Cambios solicitados», un nuevo envío a «Reenviado», etc.
+  - **Tareas:** las tareas de la publicación, que también aparecen en **Tareas** dentro del área Académico.
+  - **Bibliografía:** las referencias de tu biblioteca que citas, ordenadas en APA 7. Puedes copiarla con formato (cursivas incluidas) para pegarla en Word o exportarla a BibTeX, RIS o CSL-JSON.
+  - **Archivos** (borradores y material complementario) y **Notas**.
+- La barra de progreso indica en qué punto está la publicación, y arriba ves cuántos días lleva en ese estado.
+
+### Revistas
+
+En **Revistas** guardas dónde publicas o quieres publicar: ISSN, editorial, idiomas, web y normas para autores, indexación (JCR, SJR, Scopus, ESCI, Dialnet…), cuartil, tipo de acceso abierto y APC, estilo de citas y límite de palabras. A partir de tus envíos, la app calcula el **tiempo medio de respuesta** y la **tasa de aceptación** (aceptados entre las decisiones finales).
+
+### Biblioteca de referencias
+
+- **Añadir** te ofrece cuatro formas de crear referencias:
+  - **Por DOI:** la app descarga los datos (necesita conexión a internet) y te avisa si la referencia ya está en la biblioteca.
+  - **Pegar BibTeX o RIS:** copia las referencias desde Google Académico, el catálogo de una biblioteca o una base de datos.
+  - **Importar archivo:** .bib, .ris o CSL-JSON. Desde **Zotero**, selecciona la colección y usa **Exportar colección… → BibTeX**; desde **Mendeley**, **Exportar → BibTeX** o **RIS**.
+  - **Manual:** rellenas la ficha a mano.
+- Las referencias repetidas (mismo DOI, o mismo título y año) no se vuelven a crear. Una importación se puede deshacer entera en **Ajustes → Importar**.
+- Pulsa una referencia para abrir su ficha. Arriba ves la referencia en **APA 7** y la cita en el texto («(Bernal-Merino, 2015)»), que puedes copiar. La ficha tiene cuatro pestañas:
+  - **Ficha:** los datos bibliográficos. En la autoría, escribe una persona por línea («Apellidos, Nombre»). Para una institución, empieza la línea con «=».
+  - **Lectura y citas:** estado de lectura (pendiente, leyendo, leída), valoración, notas de lectura y **citas textuales** con su página. Cada cita se puede copiar ya con su referencia («(Bernal-Merino, 2015, p. 42)»).
+  - **PDF:** adjunta el PDF y léelo dentro de la app. Su texto se extrae y se incluye en la búsqueda.
+  - **Vínculos:** colecciones, juegos y publicaciones en las que la citas.
+- A la izquierda puedes filtrar por estado de lectura o por **colección** y crear colecciones nuevas. El buscador encuentra referencias por título, autoría, revista, palabras clave, notas, citas y texto del PDF. Las referencias también aparecen en la búsqueda global (`Ctrl+K`).
+- Selecciona varias referencias para añadirlas a una colección, copiarlas en APA 7 (ya ordenadas) o exportarlas. Sin selección, **Exportar** descarga la vista actual.
 
 ## Importar desde ClickUp, Google Sheets o Excel
 

@@ -445,8 +445,10 @@ export function undoImport(ctx: AppContext, batchId: string): number {
     glossary_term: 'glossary_terms',
     character: 'characters',
     corpus_document: 'corpus_documents',
+    reference: 'bib_references',
   };
   const order = [
+    'reference',
     'corpus_document',
     'glossary_term',
     'character',

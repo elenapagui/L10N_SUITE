@@ -7,6 +7,10 @@ import {
 import { AppShell } from '@/components/layout/AppShell';
 import { ComingSoon } from '@/components/layout/ComingSoon';
 import { NotFound, RouteError } from '@/components/layout/RouteError';
+import { JournalsPage } from '@/features/academic/JournalsPage';
+import { LibraryPage } from '@/features/academic/LibraryPage';
+import { PublicationDetailPage } from '@/features/academic/PublicationDetailPage';
+import { PublicationsPage } from '@/features/academic/PublicationsPage';
 import { CalendarPage } from '@/features/calendar/CalendarPage';
 import { ConcordancerPage } from '@/features/corpus/ConcordancerPage';
 import { CorpusGamePage } from '@/features/corpus/CorpusGamePage';
@@ -189,6 +193,28 @@ const concordanceRoute = createRoute({
   path: '/corpus/concordancias',
   component: ConcordancerPage,
 });
+const publicationsRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: '/academico/publicaciones',
+  component: PublicationsPage,
+});
+const publicationRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: '/academico/publicaciones/$publicationId',
+  component: PublicationDetailPage,
+});
+const journalsRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: '/academico/revistas',
+  component: JournalsPage,
+});
+const libraryRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: '/academico/biblioteca',
+  validateSearch: (search: Record<string, unknown>): { ref?: string } =>
+    typeof search.ref === 'string' ? { ref: search.ref } : {},
+  component: LibraryPage,
+});
 
 const routes = [
   homeRoute,
@@ -218,6 +244,10 @@ const routes = [
   corpusGameRoute,
   corpusDocumentRoute,
   concordanceRoute,
+  publicationsRoute,
+  publicationRoute,
+  journalsRoute,
+  libraryRoute,
 ];
 
 /** Secciones de fases futuras: se muestran como «en construcción». */
