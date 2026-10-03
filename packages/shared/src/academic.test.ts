@@ -265,4 +265,14 @@ describe('APA 7 en español', () => {
       apaInText({ ...article, author: [...article.author!, { family: 'Kim', given: 'J.' }] }, '15'),
     ).toBe('(Mangiron et al., 2006, p. 15)');
   });
+  it('respeta los puntos suspensivos, la URL y las fechas no válidas', () => {
+    const web: CslItem = {
+      type: 'webpage',
+      author: [{ family: 'Kim', given: 'Ana' }],
+      title: 'Y entonces...',
+      issued: { 'date-parts': [[2024, 13, 40]] },
+      URL: 'https://example.org/a..b/',
+    };
+    expect(apaText(web)).toBe('Kim, A. (2024). Y entonces... https://example.org/a..b/');
+  });
 });

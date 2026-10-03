@@ -11,6 +11,7 @@ import {
   pairLabel,
   quarterRange,
   todayISO,
+  parseISODate,
   addDaysISO,
   invoiceTotals,
   type BreakdownRow,
@@ -167,10 +168,15 @@ export function financeOverview(ctx: AppContext, year: number): FinanceOverview 
   // €/hora efectivo: importe de los encargos entregados en el año con tiempo registrado.
   const hourly = ctx.sqlite
     .prepare(
-      `SELECT SUM(j.amount_cents) AS cents, SUM(t.secs) AS secs FROM jobs j
-       JOIN (SELECT job_id, SUM((julianday(ended_at) - julianday(started_at)) * 86400) AS secs
-             FROM time_entries WHERE deleted_at IS NULL AND ended_at IS NOT NULL AND job_id IS NOT NULL GROUP BY job_id) t ON t.job_id = j.id
-       WHERE j.deleted_at IS NULL AND j.currency = ? AND substr(COALESCE(j.delivered_at, ''), 1, 4) = ? AND t.secs > 0`,
+      `SELECT SUM(j.amount_cents) AS cents, SUM(t.secs) AS secs
+       FROM jobs j JOIN projects p ON p.id = j.project_id
+       JOIN (SELECT COALESCE(te.job_id, tk.job_id) AS job_id,
+                    SUM((julianday(te.ended_at) - julianday(te.started_at)) * 86400) AS secs
+             FROM time_entries te LEFT JOIN tasks tk ON tk.id = te.task_id
+             WHERE te.deleted_at IS NULL AND te.ended_at IS NOT NULL AND COALESCE(te.job_id, tk.job_id) IS NOT NULL
+             GROUP BY 1) t ON t.job_id = j.id
+       WHERE j.deleted_at IS NULL AND p.deleted_at IS NULL AND j.status != 'cancelled'
+         AND j.currency = ? AND substr(COALESCE(j.delivered_at, ''), 1, 4) = ? AND t.secs > 0`,
     )
     .get(baseCurrency, y) as { cents: number | null; secs: number | null };
 
@@ -486,15 +492,22 @@ export function clientProfitability(ctx: AppContext, year: number): ClientProfit
       `SELECT COALESCE(pj.client_id, pp.client_id, ptj.client_id, ptp.client_id) AS clientId,
               SUM(${SECS}) AS secs
        FROM time_entries te
-       LEFT JOIN jobs j ON j.id = te.job_id LEFT JOIN projects pj ON pj.id = j.project_id
-       LEFT JOIN projects pp ON pp.id = te.project_id
-       LEFT JOIN tasks t ON t.id = te.task_id
-       LEFT JOIN jobs tj ON tj.id = t.job_id LEFT JOIN projects ptj ON ptj.id = tj.project_id
-       LEFT JOIN projects ptp ON ptp.id = t.project_id
-       WHERE te.deleted_at IS NULL AND te.ended_at IS NOT NULL AND substr(te.started_at, 1, 4) = ?
+       LEFT JOIN jobs j ON j.id = te.job_id AND j.deleted_at IS NULL
+       LEFT JOIN projects pj ON pj.id = j.project_id AND pj.deleted_at IS NULL
+       LEFT JOIN projects pp ON pp.id = te.project_id AND pp.deleted_at IS NULL
+       LEFT JOIN tasks t ON t.id = te.task_id AND t.deleted_at IS NULL
+       LEFT JOIN jobs tj ON tj.id = t.job_id AND tj.deleted_at IS NULL
+       LEFT JOIN projects ptj ON ptj.id = tj.project_id AND ptj.deleted_at IS NULL
+       LEFT JOIN projects ptp ON ptp.id = t.project_id AND ptp.deleted_at IS NULL
+       WHERE te.deleted_at IS NULL AND te.ended_at IS NOT NULL
+         AND te.started_at >= ? AND te.started_at < ?
        GROUP BY 1`,
     )
-    .all(y) as { clientId: string | null; secs: number }[];
+    // Año en hora local (las marcas de tiempo se guardan en UTC).
+    .all(
+      parseISODate(`${y}-01-01`).toISOString(),
+      parseISODate(`${Number(y) + 1}-01-01`).toISOString(),
+    ) as { clientId: string | null; secs: number }[];
   for (const h of hours)
     if (h.clientId && rows.has(h.clientId)) rows.get(h.clientId)!.hours = h.secs / 3600;
   const pay = new Map<string, { days: number; n: number }>();

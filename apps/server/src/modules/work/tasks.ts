@@ -7,6 +7,7 @@ import {
   commentInputSchema,
   idSchema,
   nextOccurrence,
+  nextRecurrenceRule,
   patchSchema,
   taskInputSchema,
   taskListInputSchema,
@@ -34,7 +35,7 @@ import {
   selectList,
   updateRow,
 } from '../../lib/sql';
-import { parse } from '../../lib/validate';
+import { parse, queryBool } from '../../lib/validate';
 import { logActivity } from '../../services/activity';
 import { indexEntity } from '../../services/search';
 import { moveToTrash, registerTrashable } from '../../services/trash';
@@ -354,7 +355,7 @@ function spawnNextOccurrence(ctx: AppContext, task: Task): Task | null {
     dueDate: nextDue,
     dueTime: task.dueTime,
     estimateMinutes: task.estimateMinutes,
-    recurrence: rule,
+    recurrence: nextRecurrenceRule(base, rule),
     checklist,
   });
   const tagIds = task.tags.map((t) => t.id);
@@ -453,10 +454,7 @@ export async function taskRoutes(app: FastifyInstance) {
     .string()
     .optional()
     .transform((v) => v?.split(',').filter(Boolean));
-  const bool = z
-    .enum(['true', 'false', '1', '0'])
-    .optional()
-    .transform((v) => (v === undefined ? undefined : v === 'true' || v === '1'));
+  const bool = queryBool;
 
   app.get('/api/tasks', async (req) => {
     const q = parse(

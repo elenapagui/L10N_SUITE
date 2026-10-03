@@ -20,7 +20,7 @@ import {
 import type { AppContext } from '../../context';
 import { NotFoundError } from '../../lib/errors';
 import { columns, decodeRow, insertRow, selectList, updateRow, assertExists } from '../../lib/sql';
-import { parse } from '../../lib/validate';
+import { parse, queryBool } from '../../lib/validate';
 import { logActivity } from '../../services/activity';
 import { indexEntity } from '../../services/search';
 import { moveToTrash, registerTrashable } from '../../services/trash';
@@ -336,7 +336,10 @@ export async function clientRoutes(app: FastifyInstance) {
   const idParam = z.object({ id: idSchema });
 
   app.get('/api/clients', async (req) => {
-    const q = parse(z.object({ includeInactive: z.coerce.boolean().default(true) }), req.query);
+    const q = parse(
+      z.object({ includeInactive: queryBool.transform((v) => v ?? true) }),
+      req.query,
+    );
     return listClients(ctx, q);
   });
 

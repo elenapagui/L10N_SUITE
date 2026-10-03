@@ -1,6 +1,6 @@
 import type { FastifyInstance } from 'fastify';
 import { z } from 'zod';
-import { addDaysISO, mondayOfISO, todayISO, type WeeklyReview } from '@l10n/shared';
+import { addDaysISO, mondayOfISO, parseISODate, todayISO, type WeeklyReview } from '@l10n/shared';
 import type { AppContext } from '../context';
 import { parse } from '../lib/validate';
 import { getSettings } from '../services/settings';
@@ -26,7 +26,15 @@ export function weeklyReview(ctx: AppContext, week?: string): WeeklyReview {
   const baseCurrency = getSettings(ctx).preferences.baseCurrency;
   const invoices = listInvoices(ctx).filter((i) => i.status !== 'cancelled');
   const fx = currencyRates(ctx, invoices);
+  // Fechas sin hora (entregas): comparación directa. Marcas de tiempo (guardadas en UTC): desde la
+  // medianoche local del lunes hasta la del lunes siguiente, para no desplazar lo hecho cerca de
+  // medianoche a otra semana.
   const day = (col: string) => `substr(${col}, 1, 10) BETWEEN ? AND ?`;
+  const instant = (col: string) => `${col} >= ? AND ${col} < ?`;
+  const instants = [
+    parseISODate(weekStart).toISOString(),
+    parseISODate(nextStart).toISOString(),
+  ] as const;
 
   // Encargos entregados.
   const delivered = ctx.sqlite
@@ -70,26 +78,26 @@ export function weeklyReview(ctx: AppContext, week?: string): WeeklyReview {
               COALESCE(a.color, CASE WHEN te.job_id IS NOT NULL OR te.project_id IS NOT NULL THEN '#6366f1' ELSE '#94a3b8' END) AS color,
               SUM(${SECS}) / 3600.0 AS hours
        FROM time_entries te LEFT JOIN tasks t ON t.id = te.task_id LEFT JOIN areas a ON a.id = t.area_id
-       WHERE te.deleted_at IS NULL AND te.ended_at IS NOT NULL AND ${day('te.started_at')}
+       WHERE te.deleted_at IS NULL AND te.ended_at IS NOT NULL AND ${instant('te.started_at')}
        GROUP BY 1, 2 ORDER BY hours DESC`,
     )
-    .all(...range) as { name: string; color: string; hours: number }[];
+    .all(...instants) as { name: string; color: string; hours: number }[];
 
   const completed = ctx.sqlite
     .prepare(
-      `SELECT title FROM tasks WHERE deleted_at IS NULL AND completed_at IS NOT NULL AND ${day('completed_at')}
+      `SELECT title FROM tasks WHERE deleted_at IS NULL AND completed_at IS NOT NULL AND ${instant('completed_at')}
        ORDER BY completed_at DESC`,
     )
-    .all(...range) as { title: string }[];
+    .all(...instants) as { title: string }[];
 
   // Investigación: cambios de estado de publicaciones, envíos y lecturas terminadas.
   const activity = ctx.sqlite
     .prepare(
       `SELECT entity_type AS entityType, entity_id AS entityId, summary, created_at AS createdAt
        FROM activity_log WHERE entity_type IN ('publication', 'submission', 'reference')
-       AND action IN ('crear', 'estado') AND ${day('created_at')} ORDER BY created_at`,
+       AND action IN ('crear', 'estado') AND ${instant('created_at')} ORDER BY created_at`,
     )
-    .all(...range) as {
+    .all(...instants) as {
     entityType: string;
     entityId: string;
     summary: string;
@@ -99,17 +107,17 @@ export function weeklyReview(ctx: AppContext, week?: string): WeeklyReview {
   const referencesAdded = (
     ctx.sqlite
       .prepare(
-        `SELECT COUNT(*) AS n FROM bib_references WHERE deleted_at IS NULL AND ${day('created_at')}`,
+        `SELECT COUNT(*) AS n FROM bib_references WHERE deleted_at IS NULL AND ${instant('created_at')}`,
       )
-      .get(...range) as { n: number }
+      .get(...instants) as { n: number }
   ).n;
   const corpus = ctx.sqlite
     .prepare(
       `SELECT COUNT(DISTINCT d.id) AS documents, COUNT(s.id) AS segments
        FROM corpus_documents d LEFT JOIN segments s ON s.document_id = d.id
-       WHERE d.deleted_at IS NULL AND ${day('d.created_at')}`,
+       WHERE d.deleted_at IS NULL AND ${instant('d.created_at')}`,
     )
-    .get(...range) as { documents: number; segments: number };
+    .get(...instants) as { documents: number; segments: number };
 
   // La semana que viene.
   const events = calendarEvents(ctx, nextStart, nextEnd);
@@ -155,7 +163,8 @@ export function weeklyReview(ctx: AppContext, week?: string): WeeklyReview {
       },
       collected: {
         count: paid.length,
-        cents: paid.reduce((s, i) => s + toBase(i.totalCents, i.exchangeRate), 0),
+        // Base imponible, como en lo facturado y en los informes (sin IVA ni IRPF).
+        cents: paid.reduce((s, i) => s + toBase(i.baseCents, i.exchangeRate), 0),
       },
       hours: { total: hours.reduce((s, h) => s + h.hours, 0), byArea: hours },
       tasksCompleted: {

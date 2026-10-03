@@ -104,5 +104,11 @@ describe('búsqueda del concordanciador', () => {
     const short = cond('마법', 'text', 'ko');
     expect(short.ftsLiteral).toBeNull();
     expect(short.likeLiteral).toBe('마법');
+    // «si» debe encontrar «Sí»: LIKE no ignora tildes ni mayúsculas no ASCII.
+    const si = cond('si');
+    expect(si.likeLiteral).toBeNull();
+    expect(kwic('—¡Sí! Claro.', si.regex, 4).map((l) => l.match)).toEqual(['Sí']);
+    expect(cond('Év').likeLiteral).toBeNull();
+    expect(cond('7%').likeLiteral).toBe('7%');
   });
 });

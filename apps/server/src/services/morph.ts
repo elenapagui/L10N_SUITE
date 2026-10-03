@@ -45,13 +45,15 @@ interface MorphRuntime {
   kiwi: Promise<Kiwi> | null;
   downloading: { received: number; total: number | null } | null;
   analyzing: { done: number; total: number } | null;
+  /** Se ha pedido otro análisis mientras había uno en marcha. */
+  again: boolean;
   error: string | null;
 }
 const runtimes = new WeakMap<AppContext, MorphRuntime>();
 function runtime(ctx: AppContext): MorphRuntime {
   let r = runtimes.get(ctx);
   if (!r) {
-    r = { kiwi: null, downloading: null, analyzing: null, error: null };
+    r = { kiwi: null, downloading: null, analyzing: null, again: false, error: null };
     runtimes.set(ctx, r);
   }
   return r;
@@ -223,7 +225,16 @@ export async function analyzePending(ctx: AppContext): Promise<void> {
       if (ctx.maintenance) break;
       const rows = select.all() as { id: number; text: string }[];
       if (!rows.length) break;
-      const analyzed = rows.map((row) => ({ id: row.id, tokens: kiwi.tokenize(row.text) }));
+      // Un texto que Kiwi no puede analizar se marca igualmente como analizado (sin lemas):
+      // si no, se volvería a intentar siempre y bloquearía el resto.
+      const analyzed = rows.map((row) => {
+        try {
+          return { id: row.id, tokens: kiwi.tokenize(row.text) };
+        } catch (error) {
+          ctx.logger.warn({ err: error, segmentId: row.id }, 'Kiwi no ha podido analizar un texto');
+          return { id: row.id, tokens: [] as KiwiToken[] };
+        }
+      });
       const now = ctx.nowISO();
       ctx.sqlite.transaction(() => {
         for (const a of analyzed) {
@@ -241,13 +252,19 @@ export async function analyzePending(ctx: AppContext): Promise<void> {
     ctx.logger.warn({ err: error }, 'Falló el análisis morfológico');
   } finally {
     r.analyzing = null;
+    if (r.again && !r.error) {
+      r.again = false;
+      setImmediate(() => void analyzePending(ctx));
+    }
   }
 }
 
 /** Lanza el análisis sin esperar (tras importar textos o al instalar el modelo). */
 export function kickAnalysis(ctx: AppContext): void {
   if (!isModelInstalled(ctx)) return;
-  void analyzePending(ctx);
+  const r = runtime(ctx);
+  if (r.analyzing) r.again = true;
+  else void analyzePending(ctx);
 }
 
 /** Lema que se busca a partir de lo que escribe la usuaria («먹었다» o «먹다» → 먹다). */

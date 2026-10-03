@@ -67,6 +67,18 @@ describe('clientes, contactos y tarifas', () => {
     expect(detail.contacts.filter((c) => c.isPrimary).map((c) => c.name)).toEqual(['Min-jun']);
   });
 
+  it('lee «false» y «0» de la URL como falso', async () => {
+    const off = await post<Client>('/api/clients', { name: 'Antigua agencia' });
+    await patch(`/api/clients/${off.id}`, { active: false });
+    await post('/api/clients', { name: 'Agencia activa' });
+    const names = async (url: string) => (await get<Client[]>(url)).map((c) => c.name).sort();
+    expect(await names('/api/clients')).toEqual(['Agencia activa', 'Antigua agencia']);
+    expect(await names('/api/clients?includeInactive=false')).toEqual(['Agencia activa']);
+    expect(await names('/api/clients?includeInactive=0')).toEqual(['Agencia activa']);
+    const res = await t.app.inject('/api/clients?includeInactive=quizá');
+    expect(res.statusCode).toBe(400);
+  });
+
   it('elige la tarifa más específica', async () => {
     const { client } = await setup();
     await post('/api/rates', { service: 'translation', unit: 'word', rateMicros: 60_000 });

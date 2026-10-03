@@ -9,6 +9,8 @@ import {
   emptyAnalysis,
   jobAmount,
   nextOccurrence,
+  nextRecurrenceRule,
+  type RecurrenceRule,
   parseCatAnalysis,
   rawVolume,
   toRateMicros,
@@ -70,6 +72,21 @@ describe('recurrencia', () => {
     expect(nextOccurrence('2026-10-02', { freq: 'weekly', interval: 2 })).toBe('2026-10-16');
     expect(nextOccurrence('2026-01-31', { freq: 'monthly', interval: 1 })).toBe('2026-02-28');
     expect(nextOccurrence('2028-02-29', { freq: 'yearly', interval: 1 })).toBe('2029-02-28');
+  });
+
+  it('vuelve al día 31 después de un mes más corto', () => {
+    let date = '2026-01-31';
+    let rule: RecurrenceRule = { freq: 'monthly', interval: 1, monthlyMode: 'same_day' };
+    const dates: string[] = [];
+    for (let i = 0; i < 4; i++) {
+      const next = nextOccurrence(date, rule);
+      rule = nextRecurrenceRule(date, rule);
+      date = next;
+      dates.push(date);
+    }
+    expect(dates).toEqual(['2026-02-28', '2026-03-31', '2026-04-30', '2026-05-31']);
+    // Si se cambia la fecha a mano a un día que no es fin de mes, manda la fecha nueva.
+    expect(nextOccurrence('2026-06-15', rule)).toBe('2026-07-15');
   });
 
   it('salta al último día laborable del mes siguiente', () => {

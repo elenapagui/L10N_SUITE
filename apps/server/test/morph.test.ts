@@ -104,15 +104,23 @@ describe('análisis morfológico del coreano', () => {
       expect(top['먹다/VV']).toBe(2);
       expect(freq.rows.some((r) => r.tag?.startsWith('J'))).toBe(false);
 
-      // Editar el texto invalida su análisis.
-      const before = (await req<MorphStatus>('GET', '/api/corpus/morph')).analyzed;
+      // Editar el texto invalida su análisis y lo vuelve a analizar en segundo plano.
       const seg = r1.hits[0]!.segmentId;
       await t.app.inject({
         method: 'PATCH',
         url: `/api/corpus/segments/${seg}`,
         payload: { texts: { ko: '전사가 들어갔다.' } },
       });
-      expect((await req<MorphStatus>('GET', '/api/corpus/morph')).analyzed).toBe(before - 1);
+      let r4: ConcordanceResult | null = null;
+      for (let i = 0; i < 100; i++) {
+        r4 = await req<ConcordanceResult>('POST', '/api/corpus/concordance', {
+          conditions: [{ lang: 'ko', mode: 'lemma', query: '전사' }],
+        });
+        if (r4.total) break;
+        await new Promise((ok) => setTimeout(ok, 100));
+      }
+      expect(r4!.hits.map((h) => h.match)).toEqual(['전사가']);
+      expect(await req<MorphStatus>('GET', '/api/corpus/morph')).toMatchObject({ analyzed: 5 });
     },
     120_000,
   );

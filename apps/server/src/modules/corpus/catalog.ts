@@ -25,6 +25,7 @@ import { NotFoundError, ValidationError } from '../../lib/errors';
 import { newId } from '../../lib/ids';
 import { parse } from '../../lib/validate';
 import { logActivity } from '../../services/activity';
+import { kickAnalysis } from '../../services/morph';
 import { indexEntity } from '../../services/search';
 import { moveToTrash, registerTrashable } from '../../services/trash';
 
@@ -428,6 +429,8 @@ export async function catalogRoutes(app: FastifyInstance) {
         .prepare('UPDATE corpus_documents SET updated_at = ? WHERE id = ?')
         .run(ctx.nowISO(), documentId);
     })();
+    // El texto coreano editado vuelve a quedar pendiente de análisis morfológico.
+    if (patch.texts?.ko !== undefined) kickAnalysis(ctx);
     return { ok: true, texts: textsFor(ctx, [id]).get(id) ?? {} };
   });
 

@@ -11,6 +11,7 @@ import {
   publicationUpdateSchema,
   submissionInputSchema,
   submissionUpdateSchema,
+  todayISO,
   type Journal,
   type Publication,
   type Submission,
@@ -47,11 +48,14 @@ const JOURNAL_COLUMNS = columns({
 /** Días entre el envío y la decisión (solo envíos con decisión distinta de «pendiente»). */
 const RESPONSE_DAYS = `(julianday(sb.decision_at) - julianday(sb.submitted_at))`;
 
+// Solo cuentan los envíos de publicaciones que no están en la papelera.
+const LIVE_SUBMISSIONS = `submissions sb JOIN publications sp ON sp.id = sb.publication_id AND sp.deleted_at IS NULL`;
+
 const JOURNAL_SELECT = `SELECT ${selectList(JOURNAL_COLUMNS, 'j')},
-  (SELECT COUNT(*) FROM submissions sb WHERE sb.journal_id = j.id) AS "submissionCount",
-  (SELECT ROUND(AVG(${RESPONSE_DAYS})) FROM submissions sb
+  (SELECT COUNT(*) FROM ${LIVE_SUBMISSIONS} WHERE sb.journal_id = j.id) AS "submissionCount",
+  (SELECT ROUND(AVG(${RESPONSE_DAYS})) FROM ${LIVE_SUBMISSIONS}
      WHERE sb.journal_id = j.id AND sb.decision_at IS NOT NULL AND sb.decision <> 'pending') AS "avgResponseDays",
-  (SELECT CAST(SUM(sb.decision = 'accept') AS REAL) / COUNT(*) FROM submissions sb
+  (SELECT CAST(SUM(sb.decision = 'accept') AS REAL) / COUNT(*) FROM ${LIVE_SUBMISSIONS}
      WHERE sb.journal_id = j.id AND sb.decision IN ('accept', 'reject', 'desk_reject')) AS "acceptanceRate"
   FROM journals j`;
 
@@ -373,7 +377,7 @@ export async function publicationRoutes(app: FastifyInstance) {
       const current = ctx.sqlite
         .prepare('SELECT decision_at AS d FROM submissions WHERE id = ?')
         .get(id) as { d: string | null };
-      if (!current.d) values.decisionAt = ctx.nowISO().slice(0, 10);
+      if (!current.d) values.decisionAt = todayISO(ctx.now());
     }
     const sets = Object.entries(values).filter(([k, v]) => v !== undefined && SUB_COLUMNS[k]);
     if (sets.length) {

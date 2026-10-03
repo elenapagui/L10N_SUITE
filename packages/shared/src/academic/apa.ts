@@ -63,7 +63,10 @@ function joinNames(names: string[]): string {
 function datePart(d: CslDate | undefined, full: boolean): string {
   const p = d?.['date-parts']?.[0];
   if (!p?.[0]) return d?.literal ?? 's. f.';
-  const [y, m, day] = p.map((x) => Number(x));
+  const [y, rawMonth, rawDay] = p.map((x) => Number(x));
+  // Meses fuera de 1–12 (o las estaciones de CSL, 21–24) y días imposibles no se muestran.
+  const m = rawMonth && rawMonth >= 1 && rawMonth <= 12 ? rawMonth : 0;
+  const day = m && rawDay && rawDay >= 1 && rawDay <= 31 ? rawDay : 0;
   if (!full || !m) return String(y);
   return day ? `${y}, ${day} de ${MONTHS_ES[m - 1]}` : `${y}, ${MONTHS_ES[m - 1]}`;
 }
@@ -237,10 +240,15 @@ export function formatApa(item: CslItem): Run[] {
       if (item.publisher) push(`${ensurePeriod(item.publisher)} `);
   }
   const url = link(item);
+  const urlRun = url ? runs.length : -1;
   if (url) push(url);
-  // Limpieza: espacios dobles, «..», espacio final.
+  // Limpieza: espacios dobles, «..» (pero no «...»), espacio final. El DOI o la URL no se tocan.
   return runs
-    .map((r) => ({ ...r, text: r.text.replace(/\s{2,}/g, ' ').replace(/\.\.(?!\.)/g, '.') }))
+    .map((r, i) =>
+      i === urlRun
+        ? r
+        : { ...r, text: r.text.replace(/\s{2,}/g, ' ').replace(/(?<![.…])\.\.(?!\.)/g, '.') },
+    )
     .filter((r, i, all) => r.text !== '' && !(i === all.length - 1 && r.text === ' '))
     .map((r, i, all) => (i === all.length - 1 ? { ...r, text: r.text.trimEnd() } : r));
 }

@@ -99,6 +99,19 @@ function accentInsensitive(literal: string): string {
 
 const W = '[\\p{L}\\p{M}\\p{N}]';
 
+/**
+ * LIKE de SQLite solo ignora mayúsculas en ASCII y no ignora tildes: si el texto lleva letras
+ * con tilde o mayúsculas no ASCII, o vocales que podrían llevarla, no sirve para preseleccionar
+ * (se busca solo con la expresión regular).
+ */
+function likeSafe(literal: string): boolean {
+  for (const ch of literal.normalize('NFC')) {
+    if (/\p{M}/u.test(ch.normalize('NFD')) || ACCENT_CLASSES[ch.toLowerCase()]) return false;
+    if (ch.toLowerCase() !== ch.toUpperCase() && !/[a-z]/i.test(ch)) return false;
+  }
+  return true;
+}
+
 export interface CompiledCondition {
   condition: SearchCondition;
   regex: RegExp;
@@ -161,7 +174,7 @@ export function compileCondition(c: SearchCondition): CompiledCondition {
     condition: c,
     regex,
     ftsLiteral: lit,
-    likeLiteral: !lit && literal ? literal : null,
+    likeLiteral: !lit && literal && likeSafe(literal) ? literal : null,
   };
 }
 

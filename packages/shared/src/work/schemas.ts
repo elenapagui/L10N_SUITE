@@ -179,6 +179,7 @@ export const recurrenceSchema = z.object({
   freq: z.enum(['daily', 'weekly', 'monthly', 'yearly']),
   interval: z.number().int().min(1).max(365).default(1),
   monthlyMode: z.enum(['same_day', 'last_weekday']).optional(),
+  dayOfMonth: z.number().int().min(1).max(31).optional(),
 });
 
 export const taskInputSchema = z.object({

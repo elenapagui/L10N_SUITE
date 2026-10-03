@@ -193,7 +193,13 @@ export async function extractBackupToTemp(ctx: AppContext, gzPath: string): Prom
     removeIfExists(tmp);
     throw new ValidationError('El archivo de copia no se puede leer o está dañado.');
   }
-  verifyDatabaseFile(ctx, tmp);
+  try {
+    verifyDatabaseFile(ctx, tmp);
+  } catch (error) {
+    // Copia de una versión más nueva o que no es una base de datos: no se deja el temporal.
+    removeIfExists(tmp);
+    throw error;
+  }
   return tmp;
 }
 

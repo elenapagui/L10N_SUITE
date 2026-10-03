@@ -16,7 +16,7 @@ import {
 import type { AppContext } from '../../context';
 import { NotFoundError } from '../../lib/errors';
 import { columns, decodeRow, insertRow, placeholders, selectList, updateRow } from '../../lib/sql';
-import { parse } from '../../lib/validate';
+import { parse, queryBool } from '../../lib/validate';
 import { logActivity } from '../../services/activity';
 import { indexEntity } from '../../services/search';
 import { moveToTrash, registerTrashable } from '../../services/trash';
@@ -278,7 +278,7 @@ export async function jobRoutes(app: FastifyInstance) {
         gameId: z.string().optional(),
         status: csv,
         billingStatus: csv,
-        open: z.coerce.boolean().optional(),
+        open: queryBool,
         dueFrom: z.string().optional(),
         dueTo: z.string().optional(),
       }),
