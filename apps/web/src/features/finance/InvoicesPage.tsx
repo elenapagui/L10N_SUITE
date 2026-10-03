@@ -263,6 +263,7 @@ function InvoiceSheet({ id, onClose }: { id: string | null; onClose: () => void 
           )}
           <Field label="Notas">
             <Input
+              key={inv.id}
               defaultValue={inv.notes ?? ''}
               onBlur={(e) =>
                 e.target.value !== (inv.notes ?? '') && patch.mutate({ notes: e.target.value })

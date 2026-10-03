@@ -54,17 +54,49 @@ export function Stars({ value, onChange }: { value: number; onChange?: (v: numbe
   );
 }
 
+type CslNames = { family?: string; given?: string; literal?: string }[];
+const namesText = (list?: CslNames) => (list ?? []).map(nameText).join('\n');
+const parseNames = (text: string): CslNames =>
+  text
+    .split('\n')
+    .map((l) => l.trim())
+    .filter(Boolean)
+    .map((l) => (l.startsWith('=') ? { literal: l.slice(1).trim() } : parseName(l)));
+
+/**
+ * Lista de personas (una por línea). El texto se conserva tal como se escribe (comas, espacios,
+ * líneas en blanco): solo se vuelve a generar si los nombres cambian desde fuera.
+ */
+function NamesField({
+  value,
+  onChange,
+  testId,
+}: {
+  value: CslNames | undefined;
+  onChange: (names: CslNames) => void;
+  testId?: string;
+}) {
+  const [text, setText] = useState(() => namesText(value));
+  useEffect(() => {
+    if (namesText(parseNames(text)) !== namesText(value)) setText(namesText(value));
+  }, [value]); // eslint-disable-line react-hooks/exhaustive-deps
+  return (
+    <Textarea
+      rows={3}
+      value={text}
+      onChange={(e) => {
+        setText(e.target.value);
+        onChange(parseNames(e.target.value));
+      }}
+      data-testid={testId}
+    />
+  );
+}
+
 /** Formulario de los datos bibliográficos (CSL-JSON). */
 export function CslForm({ value, onChange }: { value: CslItem; onChange: (v: CslItem) => void }) {
   const set = (patch: Partial<CslItem>) => onChange({ ...value, ...patch });
-  const names = (list?: { family?: string; given?: string; literal?: string }[]) =>
-    (list ?? []).map(nameText).join('\n');
-  const parseNames = (text: string) =>
-    text
-      .split('\n')
-      .map((l) => l.trim())
-      .filter(Boolean)
-      .map((l) => (l.startsWith('=') ? { literal: l.slice(1).trim() } : parseName(l)));
+
   const t = value.type;
   const hasContainer = [
     'article-journal',
@@ -117,19 +149,14 @@ export function CslForm({ value, onChange }: { value: CslItem; onChange: (v: Csl
         }
         hint="Para una institución, empieza la línea con «=»"
       >
-        <Textarea
-          rows={3}
-          value={names(value.author)}
-          onChange={(e) => set({ author: parseNames(e.target.value) })}
-          data-testid="ref-authors"
+        <NamesField
+          value={value.author}
+          onChange={(author) => set({ author })}
+          testId="ref-authors"
         />
       </Field>
       <Field label="Edición o coordinación (una persona por línea)">
-        <Textarea
-          rows={3}
-          value={names(value.editor)}
-          onChange={(e) => set({ editor: parseNames(e.target.value) })}
-        />
+        <NamesField value={value.editor} onChange={(editor) => set({ editor })} />
       </Field>
       {hasContainer && (
         <Field label={containerLabel} className="sm:col-span-2">
@@ -434,11 +461,24 @@ export function ReferenceSheet({ id, onClose }: { id: string | null; onClose: ()
   const trash = useTrashWithUndo();
   const [draft, setDraft] = useState<CslItem | null>(null);
   const r = q.data;
-  useEffect(() => setDraft(r ? r.csl : null), [r]);
+  // El borrador de la ficha solo se reinicia al cambiar de referencia: guardar la valoración,
+  // la lectura o las notas no debe borrar lo que se está editando en «Ficha».
+  const loadedFor = useRef<string | null>(null);
+  useEffect(() => {
+    if (!r) {
+      setDraft(null);
+      loadedFor.current = null;
+    } else if (loadedFor.current !== r.id) {
+      setDraft(r.csl);
+      loadedFor.current = r.id;
+    }
+  }, [r]);
 
   const patch = async (body: Record<string, unknown>) => {
     try {
-      await api(`/references/${id}`, { method: 'PATCH', body });
+      const updated = await api<Reference>(`/references/${id}`, { method: 'PATCH', body });
+      // Tras guardar la ficha, el borrador pasa a ser lo guardado (ya normalizado).
+      if (body.csl) setDraft(updated.csl);
       await Promise.all([
         qc.invalidateQueries({ queryKey: ['reference', id] }),
         qc.invalidateQueries({ queryKey: ['references'] }),

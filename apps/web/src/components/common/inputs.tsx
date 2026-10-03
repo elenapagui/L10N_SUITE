@@ -41,7 +41,14 @@ export function DecimalInput({
       setText(display(value));
       return;
     }
-    const next = parsed == null ? null : Math.round(parsed * scale);
+    // Con escala (céntimos, millonésimas) se guarda un entero; sin escala, el número con los
+    // decimales permitidos (tipos de cambio, porcentajes, horas…).
+    const next =
+      parsed == null
+        ? null
+        : scale === 1
+          ? Math.round(parsed * 10 ** maxDecimals) / 10 ** maxDecimals
+          : Math.round(parsed * scale);
     if (next !== value) onCommit(next);
     setText(display(next));
   };

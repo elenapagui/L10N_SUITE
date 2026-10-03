@@ -125,6 +125,27 @@ describe('facturación', () => {
     expect((await req<PendingBillingGroup[]>('GET', '/api/billing/pending'))[0]!.jobs).toHaveLength(
       2,
     );
+    // Una factura anulada no «revive» al deshacer el cobro.
+    await req('POST', `/api/invoices/${inv.id}/unpay`, undefined, 400);
+    expect((await req<{ invoice: Invoice }>('GET', `/api/invoices/${inv.id}`)).invoice.status).toBe(
+      'cancelled',
+    );
+  });
+
+  it('no recalcula el importe de un encargo ya facturado', async () => {
+    const { client, job } = await setup();
+    const a = await job('Encargo A', 100);
+    await req(
+      'POST',
+      '/api/invoices',
+      { number: 'F-1', clientId: client.id, issueDate: '2026-10-02', jobIds: [a.id] },
+      201,
+    );
+    const edited = await req<Job>('PATCH', `/api/jobs/${a.id}`, {
+      title: 'Encargo A (revisado)',
+      rateMicros: 150_000_000,
+    });
+    expect(edited.amountCents).toBe(10_000);
   });
 
   it('impide mezclar clientes, monedas o encargos ya facturados', async () => {

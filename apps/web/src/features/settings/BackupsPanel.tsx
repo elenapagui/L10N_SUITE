@@ -302,8 +302,19 @@ function BackupPolicy() {
               max={120}
               defaultValue={policy[key]}
               onBlur={(e) => {
+                const min = key === 'keepDaily' ? 1 : 0;
                 const value = Number(e.target.value);
-                if (Number.isInteger(value) && value !== policy[key]) save({ [key]: value });
+                // Vacío o fuera de rango: se vuelve al valor guardado (no se guarda un 0).
+                if (
+                  e.target.value.trim() === '' ||
+                  !Number.isInteger(value) ||
+                  value < min ||
+                  value > 120
+                ) {
+                  e.target.value = String(policy[key]);
+                  return;
+                }
+                if (value !== policy[key]) save({ [key]: value });
               }}
             />
           </Field>

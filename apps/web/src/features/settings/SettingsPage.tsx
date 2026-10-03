@@ -155,6 +155,27 @@ function PreferencesForm({ initial }: { initial: Settings['preferences'] }) {
   const update = useUpdateSettings('preferences');
   const save = (patch: Partial<Settings['preferences']>) =>
     update.mutate(patch, { onSuccess: () => toast.success('Preferencias guardadas') });
+  /** Guarda un número solo si ha cambiado y es válido; vacío o fuera de rango, se restaura. */
+  const saveNumber = (
+    input: HTMLInputElement,
+    key: 'defaultVatPct' | 'defaultIrpfPct' | 'paymentTermsDays',
+    min: number,
+    max: number,
+    integer = false,
+  ) => {
+    const value = Number(input.value.replace(',', '.'));
+    const valid =
+      input.value.trim() !== '' &&
+      Number.isFinite(value) &&
+      value >= min &&
+      value <= max &&
+      (!integer || Number.isInteger(value));
+    if (!valid) {
+      input.value = String(initial[key]);
+      return;
+    }
+    if (value !== initial[key]) save({ [key]: value });
+  };
 
   return (
     <Card>
@@ -198,7 +219,7 @@ function PreferencesForm({ initial }: { initial: Settings['preferences'] }) {
             min={0}
             max={100}
             defaultValue={initial.defaultVatPct}
-            onBlur={(e) => save({ defaultVatPct: Number(e.target.value) })}
+            onBlur={(e) => saveNumber(e.target, 'defaultVatPct', 0, 100)}
           />
         </Field>
         <Field
@@ -211,7 +232,7 @@ function PreferencesForm({ initial }: { initial: Settings['preferences'] }) {
             min={0}
             max={100}
             defaultValue={initial.defaultIrpfPct}
-            onBlur={(e) => save({ defaultIrpfPct: Number(e.target.value) })}
+            onBlur={(e) => saveNumber(e.target, 'defaultIrpfPct', 0, 100)}
           />
         </Field>
         <Field label="Plazo de pago por defecto (días)">
@@ -220,7 +241,7 @@ function PreferencesForm({ initial }: { initial: Settings['preferences'] }) {
             min={0}
             max={365}
             defaultValue={initial.paymentTermsDays}
-            onBlur={(e) => save({ paymentTermsDays: Number(e.target.value) })}
+            onBlur={(e) => saveNumber(e.target, 'paymentTermsDays', 0, 365, true)}
           />
         </Field>
         <div className="grid grid-cols-2 gap-3">

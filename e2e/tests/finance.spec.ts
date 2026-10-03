@@ -65,6 +65,35 @@ test('facturación: encargo entregado → factura registrada → cobrada', async
   expect(jobAfter.billingStatus).toBe('paid');
 });
 
+test('factura con IVA con decimales (10,5 %)', async ({ page, request }) => {
+  const client = await post(request, '/api/clients', {
+    name: 'Cliente Decimales E2E',
+    currency: 'EUR',
+    vatPct: 21,
+    irpfPct: 0,
+  });
+  const project = await post(request, '/api/projects', {
+    name: 'Proyecto Decimales E2E',
+    clientId: client.id,
+  });
+  const job = await post(request, '/api/jobs', {
+    projectId: project.id,
+    title: 'Revisión a tanto alzado',
+    unit: 'flat',
+    rateMicros: 100_000_000,
+  });
+  await request.patch(`/api/jobs/${job.id}`, { data: { status: 'delivered' } });
+
+  await openApp(page, '#/finanzas/facturas');
+  const group = page.getByTestId('pending-group').filter({ hasText: 'Cliente Decimales E2E' });
+  await group.getByTestId('register-invoice').click();
+  await page.getByTestId('invoice-vat').fill('10,5');
+  await page.getByTestId('invoice-vat').press('Enter');
+  await expect(page.getByTestId('invoice-vat')).toHaveValue('10,5');
+  // 100 € + 10,5 % de IVA = 110,50 € (antes se redondeaba al 11 %).
+  await expect(page.getByTestId('invoice-total')).toHaveText(/110,50/);
+});
+
 test('gastos e informes', async ({ page, request }) => {
   await openApp(page, '#/finanzas/gastos');
   await page.getByTestId('new-expense').click();

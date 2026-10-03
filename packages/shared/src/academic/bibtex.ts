@@ -54,35 +54,35 @@ const TEXT_COMMANDS: Record<string, string> = {
   textregistered: '®',
   texttrademark: '™',
   copyright: '©',
-  textasciitilde: '~',
-  textbackslash: '\\',
+  textasciitilde: '\uE001',
+  textasciicircum: '^',
 };
 
+/** Marcador temporal de «\textbackslash» (para que los pasos siguientes no lo traten como orden). */
+const BACKSLASH = '';
+
 export function decodeLatex(input: string): string {
-  let s = input;
-  // \textit{x}, \emph{x}, \textbf{x}… → x
-  s = s.replace(
-    /\\(?:textit|textbf|emph|textsc|textrm|texttt|mkbibquote|enquote)\s*\{([^{}]*)\}/g,
-    '$1',
-  );
-  // Acentos: \'{a}, \'a, {\'a}, \'{\i}
-  s = s.replace(
-    /\\(['`^"~=.])\s*(?:\{\\?([a-zA-Z])\}|\\?([a-zA-Z]))/g,
-    (_m, acc: string, a?: string, b?: string) => {
-      const base = (a ?? b ?? '').replace('ı', 'i');
-      return `${base === 'i' && (a === 'i' || b === 'i') ? 'i' : base}${ACCENTS[acc]}`;
-    },
-  );
-  s = s.replace(
-    /\\([uvHckr])\s*(?:\{\\?([a-zA-Z])\}|\s+\\?([a-zA-Z]))/g,
-    (_m, acc: string, a?: string, b?: string) => `${a ?? b}${ACCENTS[acc]}`,
-  );
+  let s = input.replace(/\\textbackslash(?![a-zA-Z])\s?(?:\{\})?/g, BACKSLASH);
+  // \href{url}{texto} → texto
+  s = s.replace(/\\href\s*\{[^{}]*\}\s*\{/g, '{');
+  // Letras especiales antes que los acentos: «\L\"odz» → «Łódź».
   s = s.replace(
     /\\(ss|aa|AA|ae|AE|oe|OE|o|O|l|L|i|j)(?![a-zA-Z])\s?/g,
     (_m, sym: string) => SYMBOLS[sym]!,
   );
+  // Acentos: \'{a}, \'a, {\'a}, \'{\i}
   s = s.replace(
-    /\\(textquoteleft|textquoteright|textquotedblleft|textquotedblright|textendash|textemdash|textellipsis|ldots|dots|guillemotleft|guillemotright|textregistered|texttrademark|copyright|textasciitilde|textbackslash)(?![a-zA-Z])\s?(?:\{\})?/g,
+    /\\(['`^"~=.])\s*(?:\{([a-zA-Zıȷ])\}|([a-zA-Zıȷ]))/g,
+    (_m, acc: string, a?: string, b?: string) =>
+      `${(a ?? b ?? '').replace('ı', 'i').replace('ȷ', 'j')}${ACCENTS[acc]}`,
+  );
+  s = s.replace(
+    /\\([uvHckr])\s*(?:\{([a-zA-Zıȷ])\}|\s+([a-zA-Zıȷ]))/g,
+    (_m, acc: string, a?: string, b?: string) =>
+      `${(a ?? b ?? '').replace('ı', 'i').replace('ȷ', 'j')}${ACCENTS[acc]}`,
+  );
+  s = s.replace(
+    /\\(textquoteleft|textquoteright|textquotedblleft|textquotedblright|textendash|textemdash|textellipsis|ldots|dots|guillemotleft|guillemotright|textregistered|texttrademark|copyright|textasciitilde|textasciicircum)(?![a-zA-Z])\s?(?:\{\})?/g,
     (_m, cmd: string) => TEXT_COMMANDS[cmd]!,
   );
   s = s
@@ -93,8 +93,21 @@ export function decodeLatex(input: string): string {
     .replace(/''/g, '”')
     .replace(/(?<!\\)~/g, ' ')
     .replace(/\\,/g, ' ')
-    .replace(/[{}]/g, '');
+    // Cualquier otra orden (\textit, \url, \emph…) se quita y se conserva su contenido.
+    .replace(/\\[a-zA-Z]+\*?\s*/g, '')
+    .replace(/[{}]/g, '')
+    .replaceAll(BACKSLASH, '\\')
+    .replaceAll('\uE001', '~');
   return s.replace(/\s+/g, ' ').trim().normalize('NFC');
+}
+
+/** URL y DOI: sin descodificar (la «~» y los «--» son parte de la dirección). */
+function rawLatex(input: string): string {
+  return input
+    .replace(/\\(?:url|path)\s*\{([^{}]*)\}/g, '$1')
+    .replace(/\\([&%$#_{}~])/g, '$1')
+    .replace(/[{}]/g, '')
+    .trim();
 }
 
 const TYPE_TO_CSL: Record<string, string> = {
@@ -324,7 +337,6 @@ function entryToCsl(e: RawEntry): CslItem {
     ['edition', 'edition'],
     ['isbn', 'ISBN'],
     ['issn', 'ISSN'],
-    ['url', 'URL'],
     ['abstract', 'abstract'],
     ['language', 'language'],
     ['note', 'note'],
@@ -334,7 +346,9 @@ function entryToCsl(e: RawEntry): CslItem {
   }
   const pages = f('pages');
   if (pages) item.page = pages.replace(/\s*[–—-]+\s*/g, '-');
-  const doi = normalizeDoi(f('doi'));
+  const url = e.fields.url ?? e.fields.howpublished;
+  if (url && /^\s*(\\url\s*\{)?\s*(https?:|ftp:|www\.)/i.test(url)) item.URL = rawLatex(url);
+  const doi = normalizeDoi(e.fields.doi != null ? rawLatex(e.fields.doi) : undefined);
   if (doi) item.DOI = doi;
   const kw = f('keywords');
   if (kw) item.keyword = kw;
@@ -375,7 +389,21 @@ const CSL_TO_TYPE: Record<string, string> = {
   manuscript: 'unpublished',
 };
 
-const escapeBib = (s: string) => s.replace(/([&%#_])/g, '\\$1').replace(/[{}]/g, '');
+const BIB_ESCAPES: Record<string, string> = {
+  '\\': '\\textbackslash{}',
+  '~': '\\textasciitilde{}',
+  '^': '\\textasciicircum{}',
+};
+const escapeBib = (s: string) =>
+  s.replace(/[{}]/g, '').replace(/[\\~^&%$#_]/g, (c) => BIB_ESCAPES[c] ?? `\\${c}`);
+
+/** Sufijo de las claves repetidas: a…z, aa, ab… (solo letras, válido en cualquier BibTeX). */
+function keySuffix(n: number): string {
+  let out = '';
+  for (let k = n; k > 0; k = Math.floor((k - 1) / 26))
+    out = String.fromCharCode(97 + ((k - 1) % 26)) + out;
+  return out;
+}
 const namesBib = (names: CslName[]) =>
   names
     .map((n) =>
@@ -395,7 +423,7 @@ export function toBibtex(items: CslItem[]): string {
     .map((item) => {
       let key = (item['citation-key'] as string | undefined) || makeCitationKey(item);
       const base = key;
-      for (let k = 2; used.has(key); k++) key = `${base}${String.fromCharCode(96 + k)}`;
+      for (let k = 2; used.has(key); k++) key = `${base}${keySuffix(k)}`;
       used.add(key);
       let type = CSL_TO_TYPE[item.type] ?? 'misc';
       if (item.type === 'thesis' && /m[aá]ster|master/i.test(item.genre ?? ''))

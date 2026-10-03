@@ -152,7 +152,9 @@ export function deriveJobFields(
         ? rawVolume(bands!)
         : (merged.volume ?? null);
   const weighted = hasAnalysis ? weightedVolume(bands!) : null;
-  if (merged.amountManual)
+  // Con importe fijado a mano o ya facturado, el importe no se recalcula: debe seguir cuadrando
+  // con la factura aunque después cambien las tarifas.
+  if (merged.amountManual || merged.billingStatus === 'invoiced' || merged.billingStatus === 'paid')
     return { volume, weightedVolume: weighted, amountCents: merged.amountCents ?? null };
   const project = getProject(ctx, merged.projectId);
   const rate = resolveRate(ctx, {

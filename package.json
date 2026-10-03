@@ -22,7 +22,7 @@
     "format:check": "prettier --check .",
     "test": "vitest run",
     "test:watch": "vitest",
-    "test:e2e": "playwright test",
+    "test:e2e": "npm run build -w @l10n/web && playwright test",
     "db:generate": "npm run db:generate -w @l10n/server",
     "desktop:stage": "npm run stage -w @l10n/desktop",
     "desktop:dev": "npm run dev -w @l10n/desktop",

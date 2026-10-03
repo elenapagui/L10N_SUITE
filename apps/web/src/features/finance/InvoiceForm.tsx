@@ -125,7 +125,12 @@ export function InvoiceDialog({
             <Input type="date" value={issueDate} onChange={(e) => setIssueDate(e.target.value)} />
           </Field>
           <Field label="IVA (%)">
-            <DecimalInput value={effVat} onCommit={(v) => setVatPct(v ?? 0)} suffix="%" />
+            <DecimalInput
+              value={effVat}
+              onCommit={(v) => setVatPct(v ?? 0)}
+              suffix="%"
+              testId="invoice-vat"
+            />
           </Field>
           <Field label="Retención IRPF (%)">
             <DecimalInput value={effIrpf} onCommit={(v) => setIrpfPct(v ?? 0)} suffix="%" />

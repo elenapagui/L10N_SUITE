@@ -89,6 +89,38 @@ describe('BibTeX', () => {
     );
     expect(toBibtex(items)).toContain('pages = {10--21}');
   });
+  it('respeta las letras especiales, \\textbackslash y las órdenes desconocidas', () => {
+    expect(decodeLatex("\\L\\'od\\'z")).toBe('Łódź');
+    expect(decodeLatex('a\\textbackslash{}b \\& c')).toBe('a\\b & c');
+    expect(decodeLatex('\\textit{a {b} c} \\href{http://x}{enlace}')).toBe('a b c enlace');
+    expect(decodeLatex('\\url{x}')).toBe('x');
+  });
+  it('no descodifica la URL ni el DOI', () => {
+    const [item] = parseBibtex(`@misc{x,
+  title = {Web},
+  url = {\\url{https://example.org/~ana/a--b\\_c}},
+  doi = {10.1000/a--b}
+}`);
+    expect(item!.URL).toBe('https://example.org/~ana/a--b_c');
+    expect(item!.DOI).toBe('10.1000/a--b');
+  });
+  it('escapa al exportar y no repite claves', () => {
+    const odd: CslItem = {
+      id: 'x',
+      type: 'book',
+      title: 'C:\\juegos ~ 50 $ ^ 100% & más_cosas #1',
+    };
+    const out = toBibtex([odd]);
+    expect(parseBibtex(out)[0]!.title).toBe(odd.title);
+    const many = Array.from({ length: 30 }, (_, i) => ({
+      ...odd,
+      id: String(i),
+      'citation-key': 'kim2020',
+    }));
+    const keys = [...toBibtex(many).matchAll(/^@\w+\{([^,]+),/gm)].map((m) => m[1]!);
+    expect(new Set(keys).size).toBe(30);
+    for (const k of keys) expect(k).toMatch(/^kim2020[a-z]*$/);
+  });
 });
 
 describe('RIS', () => {

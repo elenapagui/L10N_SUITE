@@ -57,6 +57,30 @@ test('biblioteca: importar BibTeX, evitar duplicados, citar en APA y anotar', as
   await expect(page.getByText('La localización es una actividad creativa.')).toBeVisible();
 });
 
+test('ficha: se puede escribir la autoría y el borrador sobrevive a la valoración', async ({
+  page,
+}) => {
+  await openApp(page, '#/academico/biblioteca');
+  await page.getByTestId('library-search').fill('Bernal');
+  await expect(page.getByTestId('library-row')).toHaveCount(1);
+  await page.getByTestId('library-row').click();
+  const authors = page.getByTestId('ref-authors');
+  await authors.fill('');
+  await authors.pressSequentially('Bernal-Merino, Miguel Ángel\nKim, Ji-hye');
+  await expect(authors).toHaveValue('Bernal-Merino, Miguel Ángel\nKim, Ji-hye');
+
+  // Valorar la referencia no borra lo que se está escribiendo en la ficha.
+  await page.getByRole('tab', { name: 'Lectura y citas' }).click();
+  await page.getByRole('button', { name: '4 estrellas' }).click();
+  await expect(page.getByLabel('Valoración: 4 de 5')).toBeVisible();
+  await page.getByRole('tab', { name: 'Ficha' }).click();
+  await expect(page.getByTestId('ref-authors')).toHaveValue(
+    'Bernal-Merino, Miguel Ángel\nKim, Ji-hye',
+  );
+  await page.getByTestId('ref-save').click();
+  await expect(page.getByTestId('ref-apa')).toContainText('Bernal-Merino, M. Á. y Kim, J.');
+});
+
 test('publicaciones: de la idea al envío con bibliografía y tareas', async ({ page, request }) => {
   await request.post('/api/journals', {
     data: { name: 'Revista E2E de Traducción', indexing: ['Scopus'] },

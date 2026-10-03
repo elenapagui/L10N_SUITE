@@ -466,7 +466,14 @@ function AddReferencesDialog({
   const [picked, setPicked] = useState<Set<string>>(new Set());
   const linked = new Set(publication.referenceIds);
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
+    <Dialog
+      open={open}
+      onOpenChange={(o) => {
+        // Al cerrar se olvida la selección (no debe pasar a otra publicación).
+        if (!o) setPicked(new Set());
+        onOpenChange(o);
+      }}
+    >
       <DialogContent className="max-w-2xl">
         <DialogHeader>
           <DialogTitle>Añadir referencias de la biblioteca</DialogTitle>
@@ -792,6 +799,7 @@ export function PublicationDetailPage() {
               </Field>
               <Field label="Extensión (palabras)">
                 <Input
+                  key={p.id}
                   type="number"
                   min={0}
                   defaultValue={p.wordCount ?? ''}

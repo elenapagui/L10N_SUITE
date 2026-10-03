@@ -369,7 +369,11 @@ export async function invoiceRoutes(app: FastifyInstance) {
         issueDate: patch.issueDate,
         dueDate: patch.dueDate,
         currency,
-        exchangeRate: patch.exchangeRate ?? undefined,
+        // En la moneda principal el tipo de cambio es siempre 1.
+        exchangeRate:
+          currency === getSettings(ctx).preferences.baseCurrency
+            ? 1
+            : (patch.exchangeRate ?? undefined),
         vatPct,
         irpfPct,
         extraLines,
@@ -408,6 +412,9 @@ export async function invoiceRoutes(app: FastifyInstance) {
 
   app.post('/api/invoices/:id/unpay', async (req) => {
     const { id } = parse(idParam, req.params);
+    const current = getInvoice(ctx, id);
+    if (current.status !== 'paid')
+      throw new ValidationError('Solo se puede deshacer el cobro de una factura cobrada.');
     const tx = ctx.sqlite.transaction(() => {
       updateRow(ctx, 'invoices', INVOICE_COLUMNS, id, { status: 'issued', paidAt: null });
       ctx.sqlite
