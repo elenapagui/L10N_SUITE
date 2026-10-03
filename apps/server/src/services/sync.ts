@@ -7,7 +7,7 @@ import { pipeline } from 'node:stream/promises';
 import type { SyncRemoteState, SyncStatus } from '@l10n/shared';
 import type { AppContext } from '../context';
 import { ValidationError } from '../lib/errors';
-import { ensureDir, removeIfExists } from '../lib/fs';
+import { ensureDir, removeIfExists, replaceFile } from '../lib/fs';
 import { newId } from '../lib/ids';
 import { getSettings, updateSettingsSection } from './settings';
 import {
@@ -37,6 +37,8 @@ interface LocalState {
   deviceName: string;
   /** Secuencia del último estado enviado o recibido. */
   lastSeq: number;
+  /** Hash de la última versión enviada o recibida (la «base» de este ordenador). */
+  lastSha: string | null;
   lastSyncAt: string | null;
   /** Hay cambios en este ordenador desde la última sincronización. */
   dirty: boolean;
@@ -56,6 +58,7 @@ export function readLocalState(ctx: AppContext): LocalState {
       deviceId: raw.deviceId ?? newId(),
       deviceName: raw.deviceName || os.hostname() || 'Este ordenador',
       lastSeq: raw.lastSeq ?? 0,
+      lastSha: raw.lastSha ?? null,
       lastSyncAt: raw.lastSyncAt ?? null,
       dirty: raw.dirty ?? false,
       lastEvent: raw.lastEvent ?? null,
@@ -66,6 +69,7 @@ export function readLocalState(ctx: AppContext): LocalState {
       deviceId: newId(),
       deviceName: os.hostname() || 'Este ordenador',
       lastSeq: 0,
+      lastSha: null,
       lastSyncAt: null,
       dirty: false,
       lastEvent: null,
@@ -106,23 +110,64 @@ async function sha256(file: string): Promise<string> {
   return hash.digest('hex');
 }
 
-/** Si ya se sabe que hay cambios, no hace falta volver a escribir el archivo de estado. */
-const knownDirty = new WeakSet<AppContext>();
+/**
+ * Seguimiento de escrituras en memoria. `writes` cuenta las peticiones que han cambiado datos;
+ * al enviar se compara con el valor del momento de la copia para no dar por enviados los
+ * cambios hechos mientras se enviaba. `fileDirty` evita reescribir el archivo de estado.
+ */
+interface Tracker {
+  writes: number;
+  fileDirty: boolean;
+  /** Cola de operaciones de sincronización (envío, carga, cierre): nunca a la vez. */
+  queue: Promise<unknown>;
+}
+const trackers = new WeakMap<AppContext, Tracker>();
+function tracker(ctx: AppContext): Tracker {
+  let t = trackers.get(ctx);
+  if (!t) {
+    t = { writes: 0, fileDirty: false, queue: Promise.resolve() };
+    trackers.set(ctx, t);
+  }
+  return t;
+}
 
-/** Marca que hay cambios locales (se llama tras cada escritura correcta de la API). */
+function withSyncLock<T>(ctx: AppContext, fn: () => Promise<T>): Promise<T> {
+  const t = tracker(ctx);
+  const run = t.queue.then(fn, fn);
+  t.queue = run.catch(() => undefined);
+  return run;
+}
+
+/** Marca que hay cambios locales (se llama tras cada petición que ha modificado datos). */
 export function markDirty(ctx: AppContext) {
-  if (knownDirty.has(ctx)) return;
-  knownDirty.add(ctx);
+  const t = tracker(ctx);
+  t.writes++;
+  if (t.fileDirty) return;
   const state = readLocalState(ctx);
   if (!state.dirty) writeLocalState(ctx, { ...state, dirty: true });
+  t.fileDirty = true;
+}
+
+/**
+ * Hay una versión del otro ordenador que aquí no se ha cargado: su hash no es el último que
+ * conoce este ordenador. Con `fastForward`, esa versión parte de la que tenía este ordenador,
+ * así que cargarla no pierde nada (si aquí no hay cambios).
+ */
+function compare(state: LocalState, remote: SyncRemoteState | null) {
+  if (!remote || remote.deviceId === state.deviceId || remote.sha256 === state.lastSha)
+    return { incoming: false, fastForward: false };
+  const fastForward =
+    remote.baseSha !== undefined
+      ? remote.baseSha === state.lastSha
+      : // Copias de la v0.3.0, sin base: se decide por el número de secuencia.
+        state.lastSha === null || remote.seq > state.lastSeq;
+  return { incoming: true, fastForward };
 }
 
 export function syncStatus(ctx: AppContext): SyncStatus {
   const state = readLocalState(ctx);
   const remote = readRemoteState(state);
-  const incoming = Boolean(
-    remote && remote.seq > state.lastSeq && remote.deviceId !== state.deviceId,
-  );
+  const { incoming, fastForward } = compare(state, remote);
   return {
     configured: Boolean(state.directory),
     directory: state.directory,
@@ -132,7 +177,7 @@ export function syncStatus(ctx: AppContext): SyncStatus {
     dirty: state.dirty,
     remote,
     incoming,
-    conflict: incoming && state.dirty,
+    conflict: incoming && (state.dirty || !fastForward),
     lastEvent: state.lastEvent,
   };
 }
@@ -151,8 +196,10 @@ export function configureSync(
     state.directory = dir;
     // Con una carpeta nueva se empieza de cero: lo que haya allí se tratará como del otro ordenador.
     state.lastSeq = 0;
+    state.lastSha = null;
     state.lastSyncAt = null;
     state.dirty = true;
+    tracker(ctx).fileDirty = true;
   }
   if (input.deviceName !== undefined)
     state.deviceName = input.deviceName.trim() || state.deviceName;
@@ -164,23 +211,36 @@ export function configureSync(
  * Deja en la carpeta la copia de este ordenador. No pisa cambios del otro ordenador que aún no
  * se han cargado aquí, salvo con `force` (cuando la usuaria elige quedarse con esta versión).
  */
-export async function pushSync(
+export function pushSync(
   ctx: AppContext,
   options: { force?: boolean; onlyIfDirty?: boolean } = {},
+): Promise<SyncStatus> {
+  return withSyncLock(ctx, () => pushUnlocked(ctx, options));
+}
+
+async function pushUnlocked(
+  ctx: AppContext,
+  options: { force?: boolean; onlyIfDirty?: boolean },
 ): Promise<SyncStatus> {
   const state = readLocalState(ctx);
   const dir = syncDir(state);
   if (!dir) throw new ValidationError('Elige primero la carpeta de sincronización.');
   if (ctx.integrity !== 'ok') throw new ValidationError('La base de datos no está en buen estado.');
   const remote = readRemoteState(state);
-  if (remote && remote.seq > state.lastSeq && remote.deviceId !== state.deviceId && !options.force)
+  if (compare(state, remote).incoming && !options.force)
     return { ...syncStatus(ctx), conflict: true };
-  if (options.onlyIfDirty && !state.dirty && remote?.seq === state.lastSeq) return syncStatus(ctx);
+  if (options.onlyIfDirty && !state.dirty && (!remote || remote.sha256 === state.lastSha))
+    return syncStatus(ctx);
 
   ensureDir(dir);
-  const tmpDb = path.join(ctx.config.tmpDir, `sincronizar-${newId()}.db`);
-  const partial = path.join(dir, `${DB_FILE}.${state.deviceId}.parcial`);
+  const id = newId();
+  const tmpDb = path.join(ctx.config.tmpDir, `sincronizar-${id}.db`);
+  const partial = path.join(dir, `${DB_FILE}.${id}.parcial`);
+  const tmpState = path.join(dir, `${STATE_FILE}.${id}.tmp`);
+  const t = tracker(ctx);
   try {
+    // Las escrituras posteriores a este momento no van en la copia: siguen pendientes.
+    const writesAtSnapshot = t.writes;
     await snapshotDatabase(ctx, tmpDb);
     await pipeline(
       fs.createReadStream(tmpDb),
@@ -189,7 +249,7 @@ export async function pushSync(
     );
     const hash = await sha256(partial);
     const size = fs.statSync(partial).size;
-    fs.renameSync(partial, path.join(dir, DB_FILE));
+    replaceFile(partial, path.join(dir, DB_FILE));
     mirrorAttachments(ctx, dir);
     const seq = Math.max(state.lastSeq, remote?.seq ?? 0) + 1;
     const next: SyncRemoteState = {
@@ -202,23 +262,27 @@ export async function pushSync(
       schemaVersion: ctx.schemaVersion(),
       appVersion: ctx.config.appVersion,
       sha256: hash,
+      baseSha: state.lastSha,
       size,
     };
-    const tmpState = path.join(dir, `${STATE_FILE}.${state.deviceId}.tmp`);
     fs.writeFileSync(tmpState, JSON.stringify(next, null, 2));
-    fs.renameSync(tmpState, path.join(dir, STATE_FILE));
-    knownDirty.delete(ctx);
+    replaceFile(tmpState, path.join(dir, STATE_FILE));
+    const stillClean = t.writes === writesAtSnapshot;
+    t.fileDirty = !stillClean;
+    // Se relee el estado: pudo cambiar mientras se enviaba (por ejemplo, el nombre).
     writeLocalState(ctx, {
-      ...state,
+      ...readLocalState(ctx),
       lastSeq: seq,
+      lastSha: hash,
       lastSyncAt: next.savedAt,
-      dirty: false,
+      dirty: !stillClean,
       lastEvent: { kind: 'sent', at: next.savedAt, deviceName: state.deviceName },
     });
     ctx.logger.info({ seq }, 'Sincronización enviada');
   } finally {
     removeIfExists(tmpDb);
     removeIfExists(partial);
+    removeIfExists(tmpState);
   }
   return syncStatus(ctx);
 }
@@ -227,16 +291,19 @@ export async function pushSync(
  * Carga la versión del otro ordenador. Antes hace una copia de seguridad de la de aquí y
  * conserva los ajustes propios de este ordenador (la carpeta de copias).
  */
-export async function pullSync(
-  ctx: AppContext,
-  options: { force?: boolean } = {},
-): Promise<SyncStatus> {
+export function pullSync(ctx: AppContext, options: { force?: boolean } = {}): Promise<SyncStatus> {
+  return withSyncLock(ctx, () => pullUnlocked(ctx, options));
+}
+
+async function pullUnlocked(ctx: AppContext, options: { force?: boolean }): Promise<SyncStatus> {
   const state = readLocalState(ctx);
   const dir = syncDir(state);
   const remote = readRemoteState(state);
   if (!dir || !remote)
     throw new ValidationError('No hay ninguna versión en la carpeta de sincronización.');
-  if (state.dirty && !options.force) return { ...syncStatus(ctx), conflict: true };
+  const { fastForward } = compare(state, remote);
+  if ((state.dirty || !fastForward) && !options.force)
+    return { ...syncStatus(ctx), conflict: true };
   const gz = path.join(dir, DB_FILE);
   if (
     !fs.existsSync(gz) ||
@@ -259,10 +326,12 @@ export async function pullSync(
     }
     restoreMissingAttachments(ctx, dir);
   });
-  knownDirty.delete(ctx);
+  const t = tracker(ctx);
+  t.fileDirty = false;
   writeLocalState(ctx, {
-    ...state,
-    lastSeq: remote.seq,
+    ...readLocalState(ctx),
+    lastSeq: Math.max(state.lastSeq, remote.seq),
+    lastSha: remote.sha256,
     lastSyncAt: ctx.nowISO(),
     dirty: false,
     lastEvent: { kind: 'received', at: ctx.nowISO(), deviceName: remote.deviceName },

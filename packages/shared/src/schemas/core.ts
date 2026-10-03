@@ -70,6 +70,8 @@ export interface SyncRemoteState {
   schemaVersion: number;
   appVersion: string;
   sha256: string;
+  /** Hash de la versión de la que partía este ordenador al enviar (null si era la primera). */
+  baseSha?: string | null;
   size: number;
 }
 

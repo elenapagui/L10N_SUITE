@@ -122,16 +122,28 @@ export async function buildApp(options: BuildOptions): Promise<FastifyInstance> 
 
   // Sincronización: cualquier escritura correcta (salvo las de la propia sincronización) deja
   // cambios pendientes de enviar, y al arrancar se carga la versión del otro ordenador si toca.
-  app.addHook('onResponse', async (req, reply) => {
-    if (
-      req.method !== 'GET' &&
-      reply.statusCode < 400 &&
-      req.url.startsWith('/api/') &&
-      !req.url.startsWith('/api/sync') &&
-      !req.url.startsWith('/api/backups/on-close')
-    ) {
-      markDirty(ctx);
+  // Se compara el contador de cambios de SQLite antes y después de cada petición: así solo
+  // cuentan las que de verdad modifican datos (una búsqueda o una exportación no).
+  const changesAt = new WeakMap<object, number>();
+  const totalChanges = () => {
+    try {
+      return (ctx.sqlite.prepare('SELECT total_changes() AS n').get() as { n: number }).n;
+    } catch {
+      return null; // La base de datos se está cerrando o sustituyendo.
     }
+  };
+  app.addHook('onRequest', async (req) => {
+    if (req.method === 'GET' || !req.url.startsWith('/api/') || req.url.startsWith('/api/sync'))
+      return;
+    const n = totalChanges();
+    if (n !== null) changesAt.set(req, n);
+  });
+  app.addHook('onResponse', async (req, reply) => {
+    const before = changesAt.get(req);
+    if (before === undefined || reply.statusCode >= 400) return;
+    const after = totalChanges();
+    // Distinto (no solo mayor): restaurar una copia sustituye la conexión y el contador vuelve a 0.
+    if (after !== null && after !== before) markDirty(ctx);
   });
   let morphTimer: NodeJS.Timeout | null = null;
   app.addHook('onReady', async () => {

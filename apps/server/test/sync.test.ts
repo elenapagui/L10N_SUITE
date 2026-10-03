@@ -101,3 +101,77 @@ describe('sincronización por carpeta en la nube', () => {
     expect(res.body.message).toContain('aún no ha terminado de llegar');
   });
 });
+
+describe('sincronización: casos límite', () => {
+  it('las búsquedas no cuentan como cambios y lo escrito durante un envío sigue pendiente', async () => {
+    const cloud = tempDir('l10n-nube-');
+    dirs.push(cloud);
+    const pc = await computer();
+    await pc.req('PUT', '/api/sync', { directory: cloud });
+    await pc.req('POST', '/api/clients', { name: 'Antes del envío' });
+    let s = (await pc.req<SyncStatus>('POST', '/api/sync/push', {})).body;
+    expect(s.dirty).toBe(false);
+
+    // Una búsqueda en el corpus (POST de solo lectura) no deja cambios pendientes.
+    await pc.req('POST', '/api/corpus/concordance', {
+      conditions: [{ lang: 'ko', query: '마법' }],
+    });
+    expect((await pc.req<SyncStatus>('GET', '/api/sync')).body.dirty).toBe(false);
+
+    // Un cambio guardado mientras se envía la copia no se da por enviado.
+    const push = pc.req<SyncStatus>('POST', '/api/sync/push', { force: true });
+    await pc.req('POST', '/api/clients', { name: 'Durante el envío' });
+    await push;
+    s = (await pc.req<SyncStatus>('GET', '/api/sync')).body;
+    expect(s.dirty).toBe(true);
+
+    // Dos envíos a la vez se hacen uno detrás de otro y la copia queda íntegra.
+    const [a, b] = await Promise.all([
+      pc.req<SyncStatus>('POST', '/api/sync/push', { force: true }),
+      pc.req<SyncStatus>('POST', '/api/sync/push', { force: true }),
+    ]);
+    expect([a.status, b.status]).toEqual([200, 200]);
+    expect(b.body.remote!.seq).toBeGreaterThan(a.body.remote!.seq);
+    const other = await computer();
+    await other.req('PUT', '/api/sync', { directory: cloud });
+    const pulled = await other.req<SyncStatus>('POST', '/api/sync/pull', { force: true });
+    expect(pulled.status).toBe(200);
+    expect(await names(other)).toEqual(['Antes del envío', 'Durante el envío']);
+  });
+
+  it('si los dos ordenadores envían a la vez sin verse, se pide elegir en vez de perder datos', async () => {
+    const cloud = tempDir('l10n-nube-');
+    dirs.push(cloud);
+    const folder = path.join(cloud, 'L10N Suite - sincronizacion');
+    const a = await computer();
+    const b = await computer();
+    await a.req('PUT', '/api/sync', { directory: cloud, deviceName: 'A' });
+    await b.req('PUT', '/api/sync', { directory: cloud, deviceName: 'B' });
+    await a.req('POST', '/api/clients', { name: 'Común' });
+    await a.req('POST', '/api/sync/push', {});
+    await b.req('POST', '/api/sync/pull', { force: true });
+
+    // Los dos trabajan sin conexión: cada uno envía a «su» copia de la carpeta.
+    const snapshot = tempDir('l10n-nube-copia-');
+    dirs.push(snapshot);
+    fs.cpSync(folder, snapshot, { recursive: true });
+    await a.req('POST', '/api/clients', { name: 'Solo en A' });
+    await a.req('POST', '/api/sync/push', {});
+    const fromA = tempDir('l10n-nube-a-');
+    dirs.push(fromA);
+    fs.cpSync(folder, fromA, { recursive: true });
+    fs.rmSync(folder, { recursive: true });
+    fs.cpSync(snapshot, folder, { recursive: true });
+    await b.req('POST', '/api/clients', { name: 'Solo en B' });
+    expect((await b.req<SyncStatus>('POST', '/api/sync/push', {})).body.conflict).toBe(false);
+    // El servicio en la nube se queda con la versión de A (el mismo número de secuencia).
+    fs.rmSync(folder, { recursive: true });
+    fs.cpSync(fromA, folder, { recursive: true });
+
+    const s = (await b.req<SyncStatus>('GET', '/api/sync')).body;
+    expect(s).toMatchObject({ incoming: true, conflict: true, dirty: false });
+    // Al abrir B no se carga sola la versión de A (perdería «Solo en B»).
+    expect((await b.req<SyncStatus>('POST', '/api/sync/pull', {})).body.conflict).toBe(true);
+    expect(await names(b)).toContain('Solo en B');
+  });
+});
