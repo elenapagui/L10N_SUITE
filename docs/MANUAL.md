@@ -305,4 +305,5 @@ En **Ajustes → Importar**:
 
 - **Una pantalla da error:** pulsa **Copiar informe de error**.
 - **Registros:** están en **Ayuda → Abrir carpeta de registros**.
-- **El motor de la app se detiene:** la ventana muestra «Reconectando…» y lo vuelve a arrancar sola.
+- **El motor de la app se detiene:** la ventana muestra «Reconectando…» y lo vuelve a arrancar sola. Si no lo consigue tras varios intentos, aparece el botón **Reintentar**.
+- **Al cerrar, la ventana tarda en desaparecer:** muestra «Guardando una copia y sincronizando…» mientras hace la copia al cerrar y deja la copia de sincronización. Espera a que termine.
