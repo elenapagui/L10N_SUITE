@@ -6,6 +6,8 @@ import {
   normalizeForSearch,
   pairLabel,
   parseDecimal,
+  percentOf,
+  toCents,
   toRateMicros,
   addDaysISO,
   diffDaysISO,
@@ -30,6 +32,29 @@ describe('parseDecimal', () => {
     expect(parseDecimal('abc')).toBeNull();
     expect(parseDecimal('')).toBeNull();
     expect(parseDecimal(null)).toBeNull();
+  });
+
+  it('rechaza separadores de miles mal agrupados', () => {
+    expect(parseDecimal('1,2,3')).toBeNull();
+    expect(parseDecimal('1.5.5,3')).toBeNull();
+    expect(parseDecimal('12.34.567')).toBeNull();
+    expect(parseDecimal('1,234.5,6')).toBeNull();
+    expect(parseDecimal('1,234.56')).toBeCloseTo(1234.56, 10);
+    // En los tipos de cambio, un único punto es decimal.
+    expect(parseDecimal('1.085')).toBe(1085);
+    expect(parseDecimal('1.085', { dotDecimal: true })).toBeCloseTo(1.085, 10);
+    expect(parseDecimal('1.234,5', { dotDecimal: true })).toBeCloseTo(1234.5, 10);
+  });
+});
+
+describe('redondeo', () => {
+  it('redondea los medios céntimos hacia fuera y de forma simétrica', () => {
+    expect(toCents(1.005)).toBe(101);
+    expect(toCents(-1.005)).toBe(-101);
+    expect(toCents(0.1 + 0.2)).toBe(30);
+    expect(percentOf(1_005, 50)).toBe(503);
+    expect(percentOf(-1_005, 50)).toBe(-503);
+    expect(percentOf(-1, 10)).toBe(0);
   });
 });
 

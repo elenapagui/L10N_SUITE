@@ -16,6 +16,7 @@ import {
   type PublicationAuthor,
   type Reference,
   type Submission,
+  plural,
 } from '@l10n/shared';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -747,7 +748,7 @@ export function PublicationDetailPage() {
         <Stat
           label="Referencias"
           value={p.referenceIds.length}
-          hint={`${p.submissionCount} envíos`}
+          hint={plural(p.submissionCount, 'envío', 'envíos')}
         />
       </div>
       <Tabs defaultValue="ficha">

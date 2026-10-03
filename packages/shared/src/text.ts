@@ -30,3 +30,8 @@ export function emptyToNull(value: string | null | undefined): string | null {
   const trimmed = value.trim();
   return trimmed === '' ? null : trimmed;
 }
+
+/** «1 juego», «3 juegos»: el número con la forma singular o plural. */
+export function plural(n: number, one: string, many: string): string {
+  return `${n.toLocaleString('es-ES')} ${n === 1 ? one : many}`;
+}

@@ -1,6 +1,13 @@
 import { useMemo, useState } from 'react';
 import { ChartColumnBig, Download, Info } from 'lucide-react';
-import { formatMoney, formatNumber, quarterOf, todayISO, type BreakdownRow } from '@l10n/shared';
+import {
+  formatMoney,
+  formatNumber,
+  quarterOf,
+  todayISO,
+  type BreakdownRow,
+  plural,
+} from '@l10n/shared';
 import { Button } from '@/components/ui/button';
 import { NativeSelect } from '@/components/ui/input';
 import { Field } from '@/components/ui/label';
@@ -94,7 +101,7 @@ function QuarterPanel({ year, currency }: { year: number; currency: string }) {
             <h3 className="text-sm font-medium">Modelo 303 · IVA</h3>
             <dl className="grid gap-1 rounded-md bg-muted/40 p-3 text-sm">
               <div className="flex justify-between">
-                <dt>Base facturada ({r.invoicesCount} facturas)</dt>
+                <dt>Base facturada ({plural(r.invoicesCount, 'factura', 'facturas')})</dt>
                 <dd className="tabular-nums">{money(r.incomeBaseCents)}</dd>
               </div>
               <div className="flex justify-between">
@@ -302,7 +309,7 @@ export function ReportsPage() {
                   key: r.key,
                   label: r.label,
                   value: r.cents,
-                  hint: `${r.count} encargos`,
+                  hint: plural(r.count, 'encargo', 'encargos'),
                 }))}
                 format={money}
               />
@@ -323,7 +330,7 @@ export function ReportsPage() {
                   key: r.bucket,
                   label: r.label,
                   value: r.cents,
-                  hint: `${r.count} facturas`,
+                  hint: plural(r.count, 'factura', 'facturas'),
                 }))}
                 format={money}
                 empty="No hay cobros pendientes."

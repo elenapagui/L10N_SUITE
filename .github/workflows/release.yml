@@ -35,6 +35,14 @@ jobs:
         with:
           node-version: 22
           cache: npm
+      - name: Comprobar la versión
+        if: startsWith(github.ref, 'refs/tags/v') || startsWith(inputs.version, 'v')
+        shell: bash
+        env:
+          VERSION: ${{ inputs.version || github.ref_name }}
+        run: |
+          PKG="v$(node -p "require('./package.json').version")"
+          [ "${VERSION}" = "${PKG}" ] || { echo "La versión ${VERSION} no coincide con la de package.json (${PKG})."; exit 1; }
       - run: npm ci
       - name: Pruebas del motor
         run: npm test

@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { Link, useNavigate, useSearch } from '@tanstack/react-router';
 import {
   Ban,
@@ -98,6 +98,8 @@ function InvoiceSheet({ id, onClose }: { id: string | null; onClose: () => void 
   const confirm = useConfirm();
   const trash = useTrashWithUndo();
   const [paidAt, setPaidAt] = useState(todayISO());
+  // Cada factura que se abre propone cobrarla hoy (no la fecha elegida para otra).
+  useEffect(() => setPaidAt(todayISO()), [id]);
   const action = useApiMutation((path: string) =>
     api(`/invoices/${id}/${path}`, { method: 'POST', body: path === 'pay' ? { paidAt } : {} }),
   );

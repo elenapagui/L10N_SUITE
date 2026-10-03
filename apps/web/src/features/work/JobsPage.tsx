@@ -68,15 +68,27 @@ export function NewJobDialog({
   };
   useEffect(() => {
     if (open) {
+      // Cada encargo nuevo empieza en blanco (no hereda lo escrito la vez anterior).
       resetRate();
       setProjectId(fixedProjectId ?? null);
+      setTitle('');
+      setService('translation');
+      setContentType('');
+      setUnit('word');
+      setVolume(null);
+      setDueDate('');
+      setDueTime('');
+      setPoNumber('');
+      setTemplateId('template-job-standard');
+      setRateMicros(null);
     }
   }, [open, fixedProjectId]);
   const resolved = useResolvedRate(projectId, service, unitTouched ? unit : null);
   useEffect(() => {
     if (!resolved.data) return;
     const rate = resolved.data.rate;
-    if (rate && !unitTouched) setUnit(rate.unit);
+    // Sin tarifa, la unidad vuelve a «palabra» (no se queda la del proyecto anterior).
+    if (!unitTouched) setUnit(rate?.unit ?? 'word');
     if (!rateTouched) setRateMicros(rate?.rateMicros ?? null);
   }, [resolved.data, unitTouched, rateTouched]);
 

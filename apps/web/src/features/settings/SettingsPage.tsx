@@ -140,6 +140,7 @@ function FxRatesField({
               }}
               scale={1_000_000}
               maxDecimals={6}
+              dotDecimal
               suffix={initial.baseCurrency}
               className="w-32"
               testId={`fx-${code}`}

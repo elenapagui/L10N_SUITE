@@ -24,6 +24,7 @@ import {
   type CslItem,
   type Reference,
   type ReferenceImportResult,
+  plural,
 } from '@l10n/shared';
 import { Button } from '@/components/ui/button';
 import { useConfirm } from '@/components/ui/confirm';
@@ -199,7 +200,7 @@ function AddDialog({
                       body: { text, collectionId: collectionId ?? null },
                     });
                     toast.success(
-                      `${r.created} referencias añadidas${r.duplicates ? ` · ${r.duplicates} ya estaban en la biblioteca` : ''}`,
+                      `${plural(r.created, 'referencia añadida', 'referencias añadidas')}${r.duplicates ? ` · ${r.duplicates} ${r.duplicates === 1 ? 'ya estaba' : 'ya estaban'} en la biblioteca` : ''}`,
                     );
                     await refresh();
                     onOpenChange(false);
@@ -287,7 +288,7 @@ export function LibraryPage() {
         body: form,
       });
       toast.success(
-        `${r.created} referencias importadas${r.duplicates ? ` · ${r.duplicates} duplicadas omitidas` : ''}. Puedes deshacerlo en Ajustes → Importar.`,
+        `${plural(r.created, 'referencia importada', 'referencias importadas')}${r.duplicates ? ` · ${plural(r.duplicates, 'duplicada omitida', 'duplicadas omitidas')}` : ''}. Puedes deshacerlo en Ajustes → Importar.`,
       );
       await refresh();
     } catch (error) {

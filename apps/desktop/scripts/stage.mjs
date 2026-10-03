@@ -10,6 +10,7 @@
  */
 import { execSync } from 'node:child_process';
 import fs from 'node:fs';
+import { createRequire } from 'node:module';
 import path from 'node:path';
 import { build } from 'esbuild';
 
@@ -22,7 +23,7 @@ const readJson = (file) => JSON.parse(fs.readFileSync(file, 'utf8'));
 const rootPkg = readJson(path.join(repoRoot, 'package.json'));
 const serverPkg = readJson(path.join(repoRoot, 'apps', 'server', 'package.json'));
 const electronVersion = readJson(
-  path.join(repoRoot, 'node_modules', 'electron', 'package.json'),
+  createRequire(path.join(desktopDir, 'package.json')).resolve('electron/package.json'),
 ).version;
 const sqliteVersion = serverPkg.dependencies['better-sqlite3'];
 
@@ -77,8 +78,11 @@ await build({
   define: { ...common.define, 'import.meta.url': '__importMetaUrl' },
 });
 // Módulo WebAssembly del analizador morfológico del coreano (Kiwi), junto al motor.
+// Se resuelve como lo haría el motor (npm puede instalarlo en la raíz o en apps/server).
+const serverRequire = createRequire(path.join(repoRoot, 'apps', 'server', 'package.json'));
+const kiwiDir = path.dirname(serverRequire.resolve('kiwi-nlp/package.json'));
 fs.copyFileSync(
-  path.join(repoRoot, 'node_modules', 'kiwi-nlp', 'dist', 'kiwi-wasm.wasm'),
+  path.join(kiwiDir, 'dist', 'kiwi-wasm.wasm'),
   path.join(out, 'dist', 'kiwi-wasm.wasm'),
 );
 

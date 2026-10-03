@@ -129,7 +129,7 @@ export function ForecastPanel() {
       {f.items.length > 0 && (
         <details className="rounded-lg border bg-card p-4">
           <summary className="cursor-pointer text-sm font-medium">
-            Ver las {f.items.length} partidas
+            {f.items.length === 1 ? 'Ver la partida' : `Ver las ${f.items.length} partidas`}
           </summary>
           <ul className="mt-3 grid gap-1 text-sm" data-testid="forecast-items">
             {f.items.map((it) => {

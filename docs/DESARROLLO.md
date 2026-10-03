@@ -32,6 +32,7 @@ e2e/              Pruebas Playwright (contra el motor en modo web)
 | `npm run dev`                                           | Motor (`http://127.0.0.1:4317`) e interfaz con recarga en caliente (`http://localhost:5173`)          |
 | `npm test`                                              | Pruebas unitarias y de integración (Vitest)                                                           |
 | `npm run test:e2e`                                      | Pruebas de extremo a extremo (Playwright; compila antes la interfaz con `npm run build -w @l10n/web`) |
+| `npm run build` / `npm start`                           | Compila la interfaz y el motor (`apps/server/dist`) y arranca el modo web                             |
 | `npm run lint` / `npm run typecheck` / `npm run format` | Calidad del código                                                                                    |
 | `npm run db:generate`                                   | Genera una migración a partir de los cambios del esquema                                              |
 | `npm run desktop:stage`                                 | Prepara `apps/desktop/build/app`                                                                      |
@@ -62,7 +63,7 @@ L10N_DISABLE_GPU=1 xvfb-run -a npx electron apps/desktop/build/app --no-sandbox 
 
 ## Publicar una versión
 
-1. Sube la versión en `package.json` (raíz).
+1. Sube la versión en todos los `package.json`: `npm version X.Y.Z --workspaces --include-workspace-root --no-git-tag-version`. El flujo comprueba que coincide con la etiqueta.
 2. Crea y sube una etiqueta `vX.Y.Z`, o bien lanza a mano el flujo **Instaladores** (pestaña Actions → Run workflow) indicando la versión `vX.Y.Z`: en ese caso GitHub crea la etiqueta sobre el commit de la rama elegida.
 3. El flujo **Instaladores** (`.github/workflows/release.yml`):
    - genera el `.exe` y el `.dmg`;

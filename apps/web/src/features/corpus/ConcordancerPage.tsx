@@ -256,6 +256,7 @@ export function ConcordancerPage() {
         mode: c.mode ?? 'text',
         query: c.query,
         negate: c.negate ?? false,
+        caseSensitive: c.caseSensitive ?? false,
       })),
     );
     setFilters((q.filters as CorpusFilters) ?? {});
@@ -288,7 +289,7 @@ export function ConcordancerPage() {
               aria-label="Idioma"
               data-testid={`cond-lang-${i}`}
             >
-              {CORPUS_LANGS.slice(0, 5).map((l) => (
+              {CORPUS_LANGS.map((l) => (
                 <option key={l.value} value={l.value}>
                   {i === 0 ? '' : c.negate ? 'y sin ' : 'y '}
                   {l.label}

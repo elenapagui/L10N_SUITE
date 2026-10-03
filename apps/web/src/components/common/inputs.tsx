@@ -18,10 +18,13 @@ export function DecimalInput({
   id,
   disabled,
   testId,
+  dotDecimal,
 }: {
   value: number | null | undefined;
   onCommit: (value: number | null) => void;
   scale?: number;
+  /** «1.085» es 1,085 (no 1085): para tipos de cambio. */
+  dotDecimal?: boolean;
   maxDecimals?: number;
   placeholder?: string;
   className?: string;
@@ -36,7 +39,7 @@ export function DecimalInput({
   useEffect(() => setText(display(value)), [value]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const commit = () => {
-    const parsed = parseDecimal(text);
+    const parsed = parseDecimal(text, { dotDecimal });
     if (text.trim() !== '' && parsed == null) {
       setText(display(value));
       return;

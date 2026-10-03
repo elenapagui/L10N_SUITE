@@ -11,6 +11,7 @@ import {
   useSensors,
 } from '@dnd-kit/core';
 import { GraduationCap, Kanban, List, Plus } from 'lucide-react';
+import { toast } from 'sonner';
 import {
   PUBLICATION_STATUSES,
   PUBLICATION_TYPES,
@@ -232,11 +233,21 @@ export function PublicationsPage() {
     .sort((a, b) => a.deadline!.localeCompare(b.deadline!));
 
   const setStatus = async (id: string, status: string) => {
+    const before = qc.getQueryData<Publication[]>(['publications']);
     qc.setQueryData<Publication[]>(['publications'], (old) =>
       old?.map((p) => (p.id === id ? { ...p, status: status as PublicationStatus } : p)),
     );
-    await api(`/publications/${id}`, { method: 'PATCH', body: { status } });
-    await qc.invalidateQueries({ queryKey: ['publications'] });
+    try {
+      await api(`/publications/${id}`, { method: 'PATCH', body: { status } });
+    } catch (error) {
+      // Si no se guarda, la tarjeta vuelve a su columna.
+      qc.setQueryData(['publications'], before);
+      toast.error(error instanceof Error ? error.message : 'No se ha podido cambiar el estado.');
+    }
+    await Promise.all([
+      qc.invalidateQueries({ queryKey: ['publications'] }),
+      qc.invalidateQueries({ queryKey: ['publication', id] }),
+    ]);
   };
 
   const columns = useMemo<ColumnDef<Publication, unknown>[]>(

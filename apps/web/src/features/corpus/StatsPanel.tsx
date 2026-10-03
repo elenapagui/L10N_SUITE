@@ -6,6 +6,7 @@ import {
   koreanPosLabel,
   langLabel,
   type CorpusFilters,
+  plural,
 } from '@l10n/shared';
 import { Button } from '@/components/ui/button';
 import { NativeSelect } from '@/components/ui/input';
@@ -54,7 +55,7 @@ function Distribution({
           key: r.key,
           label: r.label,
           value: r.segments,
-          hint: `${r.games} juegos`,
+          hint: plural(r.games, 'juego', 'juegos'),
         }))}
         format={(v) => formatNumber(v, 0)}
       />

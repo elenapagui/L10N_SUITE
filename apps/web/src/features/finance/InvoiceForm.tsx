@@ -225,7 +225,12 @@ export function InvoiceDialog({
                 label={`Tipo de cambio (1 ${currency} = ? ${prefs?.baseCurrency})`}
                 hint="El que aplica tu factura o tu banco; se usa en los informes en tu moneda principal"
               >
-                <DecimalInput value={exchangeRate} onCommit={setExchangeRate} maxDecimals={6} />
+                <DecimalInput
+                  value={exchangeRate}
+                  onCommit={setExchangeRate}
+                  maxDecimals={6}
+                  dotDecimal
+                />
               </Field>
             )}
             <Field label="Notas">
