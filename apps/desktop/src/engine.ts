@@ -96,6 +96,11 @@ async function main() {
       app.log.error({ err: error }, 'Falló la copia al cerrar');
     }
     try {
+      await app.inject({ method: 'POST', url: '/api/sync/on-close', payload: {} });
+    } catch (error) {
+      app.log.error({ err: error }, 'Falló la sincronización al cerrar');
+    }
+    try {
       await app.close();
     } finally {
       parentPort.postMessage({ type: 'shutdown-done' });

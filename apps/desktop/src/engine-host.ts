@@ -115,7 +115,7 @@ export class EngineHost {
   }
 
   /** Cierre ordenado: el motor hace la copia «al cerrar» y cierra la base de datos. */
-  async stop(timeoutMs = 20_000): Promise<void> {
+  async stop(timeoutMs = 90_000): Promise<void> {
     this.stopping = true;
     const child = this.child;
     if (!child) return;

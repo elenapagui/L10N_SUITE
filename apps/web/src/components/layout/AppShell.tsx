@@ -11,6 +11,7 @@ import { Sidebar } from './Sidebar';
 import { TimerWidget } from '@/features/work/time/TimerWidget';
 import { TaskSheetProvider } from '@/features/work/tasks/TaskSheetContext';
 import { useReminders } from '@/hooks/reminders';
+import { SyncIndicator } from '@/features/settings/SyncPanel';
 
 function readCollapsed(): boolean {
   try {
@@ -115,6 +116,7 @@ export function AppShell() {
               <Kbd className="ml-auto">{modKey} K</Kbd>
             </button>
             <div className="ml-auto flex items-center gap-2">
+              <SyncIndicator />
               <TimerWidget />
               <ThemeToggle />
             </div>

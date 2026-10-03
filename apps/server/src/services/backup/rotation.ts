@@ -53,8 +53,8 @@ function keepNewestPerBucket(
 
 /**
  * Rotación «abuelo-padre-hijo»: la copia más reciente de cada uno de los últimos N días,
- * N semanas y N meses. Las manuales y las de seguridad (antes de migrar, restaurar o
- * importar) se conservan aparte.
+ * N semanas y N meses. Las manuales y las de seguridad (antes de migrar, restaurar,
+ * importar o sincronizar) se conservan aparte.
  */
 export function selectBackupsToDelete(backups: RotatableBackup[], policy: BackupPolicy): string[] {
   const sorted = [...backups].sort((a, b) => b.createdAt.localeCompare(a.createdAt));
@@ -71,7 +71,7 @@ export function selectBackupsToDelete(backups: RotatableBackup[], policy: Backup
     .slice(0, KEEP_MANUAL)
     .forEach((b) => keep.add(b.fileName));
 
-  for (const kind of ['pre-migration', 'pre-restore', 'pre-import'] as const) {
+  for (const kind of ['pre-migration', 'pre-restore', 'pre-import', 'pre-sync'] as const) {
     sorted
       .filter((b) => b.kind === kind)
       .slice(0, KEEP_SAFETY)

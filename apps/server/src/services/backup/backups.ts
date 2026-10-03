@@ -20,6 +20,7 @@ const KINDS: BackupKind[] = [
   'close',
   'pre-restore',
   'pre-import',
+  'pre-sync',
 ];
 const NAME_RE =
   /^l10n-(\d{4})-(\d{2})-(\d{2})_(\d{2})-(\d{2})-(\d{2})-(\d{3})_([a-z-]+)\.sqlite\.gz$/;

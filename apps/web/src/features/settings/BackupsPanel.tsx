@@ -23,6 +23,7 @@ const KIND_LABELS: Record<BackupKind, string> = {
   'pre-migration': 'Antes de actualizar',
   'pre-restore': 'Antes de restaurar',
   'pre-import': 'Antes de importar',
+  'pre-sync': 'Antes de sincronizar',
 };
 
 function reloadApp() {

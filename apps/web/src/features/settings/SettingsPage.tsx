@@ -6,6 +6,7 @@ import {
   FolderOpen,
   HardDrive,
   Info,
+  RefreshCw,
   Settings as SettingsIcon,
   SlidersHorizontal,
   Tag,
@@ -26,6 +27,7 @@ import { DecimalInput } from '@/components/common/inputs';
 import { applyTheme } from '@/hooks/theme';
 import { desktop, modKey } from '@/lib/desktop';
 import { BackupsSettings } from './BackupsPanel';
+import { SyncSettings } from './SyncPanel';
 import { TagsManager } from './TagsManager';
 import { WorkSettings } from './WorkSettings';
 import { ImportWizard } from './ImportWizard';
@@ -37,6 +39,7 @@ export const SETTINGS_TABS = [
   'trabajo',
   'etiquetas',
   'importar',
+  'sincronizacion',
   'copias',
   'acerca',
 ] as const;
@@ -348,6 +351,9 @@ export function SettingsPage() {
           <TabsTrigger value="importar">
             <FileUp /> Importar
           </TabsTrigger>
+          <TabsTrigger value="sincronizacion">
+            <RefreshCw /> Sincronización
+          </TabsTrigger>
           <TabsTrigger value="copias" data-testid="tab-copias">
             <HardDrive /> Copias de seguridad
           </TabsTrigger>
@@ -384,6 +390,9 @@ export function SettingsPage() {
         <TabsContent value="importar">
           <NotionImport />
           <ImportWizard />
+        </TabsContent>
+        <TabsContent value="sincronizacion">
+          <SyncSettings />
         </TabsContent>
         <TabsContent value="copias">
           <BackupsSettings />

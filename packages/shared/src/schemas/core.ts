@@ -57,7 +57,44 @@ export interface SearchResult {
 }
 
 export type BackupKind =
-  'auto' | 'manual' | 'pre-migration' | 'close' | 'pre-restore' | 'pre-import';
+  'auto' | 'manual' | 'pre-migration' | 'close' | 'pre-restore' | 'pre-import' | 'pre-sync';
+
+/** Estado que cada ordenador deja en la carpeta de sincronización (`estado.json`). */
+export interface SyncRemoteState {
+  format: 'l10n-suite-sincronizacion';
+  version: 1;
+  seq: number;
+  deviceId: string;
+  deviceName: string;
+  savedAt: string;
+  schemaVersion: number;
+  appVersion: string;
+  sha256: string;
+  size: number;
+}
+
+export interface SyncStatus {
+  configured: boolean;
+  /** Carpeta elegida (la de OneDrive, iCloud…). */
+  directory: string | null;
+  /** Subcarpeta donde la app deja sus archivos. */
+  folder: string | null;
+  deviceName: string;
+  lastSyncAt: string | null;
+  /** Hay cambios en este ordenador sin enviar. */
+  dirty: boolean;
+  remote: SyncRemoteState | null;
+  /** Hay una versión más reciente del otro ordenador. */
+  incoming: boolean;
+  /** Hay cambios en los dos ordenadores: hay que elegir. */
+  conflict: boolean;
+  lastEvent: {
+    kind: 'sent' | 'received' | 'conflict' | 'error';
+    at: string;
+    deviceName: string | null;
+    message?: string;
+  } | null;
+}
 
 export interface BackupInfo {
   fileName: string;

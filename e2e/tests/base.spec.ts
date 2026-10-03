@@ -88,3 +88,23 @@ test('guarda los datos del perfil y las preferencias', async ({ page }) => {
   await openApp(page, '#/');
   await expect(page.getByRole('heading', { level: 1 })).toContainText('Prueba');
 });
+
+test('sincronización: configurar la carpeta y enviar una copia', async ({ page }) => {
+  const fs = await import('node:fs');
+  const os = await import('node:os');
+  const path = await import('node:path');
+  const cloud = fs.mkdtempSync(path.join(os.tmpdir(), 'l10n-e2e-nube-'));
+  await openApp(page, '#/ajustes?tab=sincronizacion');
+  await page.getByTestId('sync-directory').fill(cloud);
+  await page.getByTestId('sync-directory').blur();
+  await expect(page.getByText('Sincronización configurada')).toBeVisible();
+  await expect(page.getByText('Hay cambios sin enviar.')).toBeVisible();
+  await expect(page.getByTestId('sync-indicator')).toBeVisible();
+  await page.getByTestId('sync-push').click();
+  await expect(page.getByText('Copia enviada a la carpeta de sincronización')).toBeVisible();
+  await expect(page.getByText('No hay cambios sin enviar.')).toBeVisible();
+  expect(fs.existsSync(path.join(cloud, 'L10N Suite - sincronizacion', 'estado.json'))).toBe(true);
+  // Se desactiva para no afectar al resto de pruebas.
+  await page.getByRole('button', { name: 'Desactivar' }).click();
+  await expect(page.getByTestId('sync-indicator')).toBeHidden();
+});

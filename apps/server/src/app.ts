@@ -19,6 +19,8 @@ import { expenseRoutes } from './modules/finance/expenses';
 import { invoiceRoutes } from './modules/finance/invoices';
 import { reportRoutes } from './modules/finance/reports';
 import { reviewRoutes } from './modules/review';
+import { syncRoutes } from './modules/sync';
+import { markDirty, syncOnStartup } from './services/sync';
 import { summaryRoutes } from './modules/finance/summary';
 import { clientRoutes } from './modules/work/clients';
 import { dashboardRoutes } from './modules/work/dashboard';
@@ -117,6 +119,23 @@ export async function buildApp(options: BuildOptions): Promise<FastifyInstance> 
     },
   );
 
+  // Sincronización: cualquier escritura correcta (salvo las de la propia sincronización) deja
+  // cambios pendientes de enviar, y al arrancar se carga la versión del otro ordenador si toca.
+  app.addHook('onResponse', async (req, reply) => {
+    if (
+      req.method !== 'GET' &&
+      reply.statusCode < 400 &&
+      req.url.startsWith('/api/') &&
+      !req.url.startsWith('/api/sync') &&
+      !req.url.startsWith('/api/backups/on-close')
+    ) {
+      markDirty(ctx);
+    }
+  });
+  app.addHook('onReady', async () => {
+    await syncOnStartup(ctx);
+  });
+
   await app.register(systemRoutes);
   await app.register(settingsRoutes);
   await app.register(tagRoutes);
@@ -148,6 +167,7 @@ export async function buildApp(options: BuildOptions): Promise<FastifyInstance> 
   await app.register(expenseRoutes);
   await app.register(reportRoutes);
   await app.register(reviewRoutes);
+  await app.register(syncRoutes);
   await app.register(summaryRoutes);
 
   if (config.webDir && fs.existsSync(path.join(config.webDir, 'index.html'))) {
