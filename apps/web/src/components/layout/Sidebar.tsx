@@ -79,7 +79,7 @@ export function Sidebar({ collapsed, onToggle }: { collapsed: boolean; onToggle:
   return (
     <aside
       className={cn(
-        'flex h-full shrink-0 flex-col border-r bg-sidebar transition-[width] duration-150',
+        'flex h-full shrink-0 flex-col border-r bg-sidebar transition-[width] duration-150 print:hidden',
         collapsed ? 'w-14' : 'w-60',
       )}
     >

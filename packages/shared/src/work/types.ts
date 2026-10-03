@@ -309,3 +309,44 @@ export interface Reminder {
   body: string;
   route: string;
 }
+
+/** Revisión semanal: lo hecho en una semana (lunes a domingo) y lo que viene en la siguiente. */
+export interface WeeklyReview {
+  /** Lunes de la semana revisada. */
+  weekStart: string;
+  weekEnd: string;
+  nextStart: string;
+  nextEnd: string;
+  baseCurrency: string;
+  done: {
+    delivered: {
+      count: number;
+      /** Importe en la moneda principal (base). */
+      cents: number;
+      units: { unit: string; volume: number }[];
+      jobs: { id: string; title: string; clientName: string | null; deliveredAt: string }[];
+    };
+    invoiced: { count: number; cents: number };
+    collected: { count: number; cents: number };
+    hours: { total: number; byArea: { name: string; color: string; hours: number }[] };
+    tasksCompleted: { count: number; titles: string[] };
+    academic: { summary: string; createdAt: string; entityType: string; entityId: string }[];
+    referencesRead: number;
+    referencesAdded: number;
+    corpus: { documents: number; segments: number };
+  };
+  next: {
+    deliveries: {
+      id: string;
+      title: string;
+      clientName: string | null;
+      dueDate: string;
+      dueTime: string | null;
+    }[];
+    tasks: { id: string; title: string; dueDate: string }[];
+    deadlines: { kind: string; id: string; title: string; date: string }[];
+    collections: { cents: number; count: number };
+    overdueCollectionsCents: number;
+    overdueTasks: number;
+  };
+}

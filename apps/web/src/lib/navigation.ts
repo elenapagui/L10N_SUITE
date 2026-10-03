@@ -9,6 +9,7 @@ import {
   FolderKanban,
   Gamepad2,
   GraduationCap,
+  CalendarCheck,
   House,
   Library,
   ListChecks,
@@ -40,7 +41,15 @@ export interface NavSection {
 export const NAV_SECTIONS: NavSection[] = [
   {
     label: null,
-    items: [{ label: 'Inicio', to: '/', icon: House, keywords: 'panel dashboard hoy' }],
+    items: [
+      { label: 'Inicio', to: '/', icon: House, keywords: 'panel dashboard hoy' },
+      {
+        label: 'Revisión semanal',
+        to: '/revision-semanal',
+        icon: CalendarCheck,
+        keywords: 'semana resumen balance lunes',
+      },
+    ],
   },
   {
     label: 'Trabajo',

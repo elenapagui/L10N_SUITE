@@ -251,6 +251,14 @@ export function pendingReminders(ctx: AppContext): Reminder[] {
       route: '/trabajo/tareas',
     });
   }
+  if (now.getDay() === 1) {
+    reminders.push({
+      key: `weekly-review:${today}`,
+      title: 'Tu revisión semanal está lista',
+      body: 'Repasa lo que hiciste la semana pasada y lo que tienes esta semana.',
+      route: '/revision-semanal',
+    });
+  }
   return reminders;
 }
 

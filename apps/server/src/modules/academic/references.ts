@@ -297,7 +297,7 @@ export function createReference(ctx: AppContext, raw: unknown): Reference {
 }
 
 export function updateReference(ctx: AppContext, id: string, raw: unknown): Reference {
-  getReference(ctx, id);
+  const before = getReference(ctx, id);
   const patch = parse(referenceUpdateSchema, raw);
   ctx.sqlite.transaction(() => {
     const sets: string[] = [];
@@ -352,7 +352,16 @@ export function updateReference(ctx: AppContext, id: string, raw: unknown): Refe
     setLinks(ctx, id, patch.collectionIds, patch.gameIds);
   })();
   indexReference(ctx, id);
-  return getReference(ctx, id);
+  const after = getReference(ctx, id);
+  if (patch.readStatus === 'read' && before.readStatus !== 'read') {
+    logActivity(ctx, {
+      entityType: 'reference',
+      entityId: id,
+      action: 'estado',
+      summary: `Lectura terminada: «${after.title || 'Sin título'}»`,
+    });
+  }
+  return after;
 }
 
 /** Detecta el formato del texto: BibTeX, RIS o CSL-JSON. */

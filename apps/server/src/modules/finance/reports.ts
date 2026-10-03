@@ -387,7 +387,7 @@ export async function accountingWorkbook(
  * Tipo de cambio de cada moneda a la principal: el de la factura más reciente en esa moneda o,
  * con prioridad, el aproximado de Ajustes (lo ha fijado la usuaria para las estimaciones).
  */
-function currencyRates(ctx: AppContext, invoices: Invoice[]): Map<string, number> {
+export function currencyRates(ctx: AppContext, invoices: Invoice[]): Map<string, number> {
   const prefs = getSettings(ctx).preferences;
   const fx = new Map<string, number>([[prefs.baseCurrency, 1]]);
   for (const i of [...invoices].sort((a, b) => a.issueDate.localeCompare(b.issueDate)))

@@ -103,7 +103,7 @@ export function AppShell() {
         <Sidebar collapsed={collapsed} onToggle={toggleSidebar} />
         <div className="flex min-w-0 flex-1 flex-col print:block">
           <EngineBanner />
-          <header className="flex h-12 shrink-0 items-center gap-2 border-b px-4">
+          <header className="flex h-12 shrink-0 items-center gap-2 border-b px-4 print:hidden">
             <button
               type="button"
               onClick={() => setPaletteOpen(true)}
@@ -119,7 +119,7 @@ export function AppShell() {
               <ThemeToggle />
             </div>
           </header>
-          <main className="min-h-0 flex-1 overflow-y-auto">
+          <main className="min-h-0 flex-1 overflow-y-auto print:overflow-visible">
             <Outlet />
           </main>
         </div>

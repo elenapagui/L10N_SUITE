@@ -177,3 +177,16 @@ test('tarifa con idiomas: se aplica al crear el encargo desde Encargos y explica
   await page.getByTestId('job-volume').blur();
   await expect(page.getByTestId('job-amount')).toHaveText(/350,00/);
 });
+
+test('revisión semanal: lo hecho y lo que viene, con navegación entre semanas', async ({
+  page,
+}) => {
+  await openApp(page);
+  await page.getByTestId('nav-/revision-semanal').click();
+  await expect(page.getByRole('heading', { name: 'Revisión semanal' })).toBeVisible();
+  await expect(page.getByTestId('weekly-review')).toContainText('Lo que hiciste');
+  await expect(page.getByTestId('weekly-review')).toContainText('Lo que viene');
+  const before = await page.getByRole('heading', { level: 2 }).first().innerText();
+  await page.getByRole('button', { name: 'Semana anterior' }).click();
+  await expect(page.getByRole('heading', { level: 2 }).first()).not.toHaveText(before);
+});

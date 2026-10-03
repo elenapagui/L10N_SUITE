@@ -18,6 +18,7 @@ import { importRoutes } from './modules/import';
 import { expenseRoutes } from './modules/finance/expenses';
 import { invoiceRoutes } from './modules/finance/invoices';
 import { reportRoutes } from './modules/finance/reports';
+import { reviewRoutes } from './modules/review';
 import { summaryRoutes } from './modules/finance/summary';
 import { clientRoutes } from './modules/work/clients';
 import { dashboardRoutes } from './modules/work/dashboard';
@@ -146,6 +147,7 @@ export async function buildApp(options: BuildOptions): Promise<FastifyInstance> 
   await app.register(referenceRoutes);
   await app.register(expenseRoutes);
   await app.register(reportRoutes);
+  await app.register(reviewRoutes);
   await app.register(summaryRoutes);
 
   if (config.webDir && fs.existsSync(path.join(config.webDir, 'index.html'))) {

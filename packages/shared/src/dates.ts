@@ -22,6 +22,14 @@ export function addDaysISO(value: string, days: number): string {
   return toISODate(date);
 }
 
+/** Lunes de la semana de una fecha ISO (las semanas empiezan en lunes). */
+export function mondayOfISO(value: string): string {
+  const date = parseISODate(value);
+  const day = (date.getDay() + 6) % 7; // lunes = 0
+  date.setDate(date.getDate() - day);
+  return toISODate(date);
+}
+
 export function diffDaysISO(from: string, to: string): number {
   const a = parseISODate(from);
   const b = parseISODate(to);

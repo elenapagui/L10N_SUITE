@@ -20,6 +20,7 @@ import { ExpensesPage } from '@/features/finance/ExpensesPage';
 import { InvoicesPage } from '@/features/finance/InvoicesPage';
 import { ReportsPage } from '@/features/finance/ReportsPage';
 import { HomePage } from '@/features/home/HomePage';
+import { WeeklyReviewPage } from '@/features/home/WeeklyReviewPage';
 import { PageViewPage, PagesHomePage } from '@/features/pages/PagesPage';
 import { ResourceRedirect } from '@/features/resources/ResourceRedirect';
 import { TablePage, TablesPage } from '@/features/tables/TablesPage';
@@ -44,6 +45,13 @@ const rootRoute = createRootRoute({
 });
 
 const homeRoute = createRoute({ getParentRoute: () => rootRoute, path: '/', component: HomePage });
+const weeklyReviewRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: '/revision-semanal',
+  validateSearch: (search: Record<string, unknown>): { semana?: string } =>
+    typeof search.semana === 'string' ? { semana: search.semana } : {},
+  component: WeeklyReviewPage,
+});
 const trashRoute = createRoute({
   getParentRoute: () => rootRoute,
   path: '/papelera',
@@ -220,6 +228,7 @@ const libraryRoute = createRoute({
 
 const routes = [
   homeRoute,
+  weeklyReviewRoute,
   settingsRoute,
   trashRoute,
   clientsRoute,
