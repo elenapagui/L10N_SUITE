@@ -1,6 +1,6 @@
 {
   "name": "l10n-suite",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "private": true,
   "description": "Espacio de trabajo de escritorio para la traducción de videojuegos, la investigación académica y el corpus.",
   "type": "module",
