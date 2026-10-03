@@ -124,3 +124,56 @@ test('importa tareas desde un CSV de ClickUp y deshace la importación', async (
   await page.getByRole('alertdialog').getByRole('button', { name: 'Deshacer' }).click();
   await expect(page.getByRole('cell', { name: 'Deshecha', exact: true })).toBeVisible();
 });
+
+test('tarifa con idiomas: se aplica al crear el encargo desde Encargos y explica cuándo no hay', async ({
+  page,
+}) => {
+  await openApp(page, '#/trabajo/clientes');
+  await page.getByTestId('new-client').click();
+  await page.getByLabel('Nombre').fill('Estudio Tarifas KO');
+  await page.getByRole('button', { name: 'Crear cliente' }).click();
+  await expect(page.getByRole('heading', { name: 'Estudio Tarifas KO' })).toBeVisible();
+
+  // Tarifa de traducción KO→ES por carácter, creada desde la interfaz.
+  await page.getByRole('tab', { name: /Tarifas/ }).click();
+  await page.getByTestId('new-rate').click();
+  const rateDialog = page.getByRole('dialog');
+  await rateDialog.locator('select').nth(1).selectOption('char');
+  await rateDialog.locator('select').nth(2).selectOption('ko');
+  await rateDialog.locator('select').nth(3).selectOption('es');
+  await page.getByTestId('rate-value').fill('0,035');
+  await page.getByTestId('rate-value').blur();
+  await page.getByRole('button', { name: 'Guardar tarifa' }).click();
+  await expect(rateDialog).toBeHidden();
+
+  await page.getByTestId('nav-/trabajo/proyectos').click();
+  await page.getByTestId('new-project').click();
+  await page.getByTestId('project-client').click();
+  await page.getByRole('option', { name: 'Estudio Tarifas KO' }).click();
+  await page.getByLabel('Nombre del proyecto').fill('Proyecto Tarifas KO');
+  await page.getByTestId('create-project').click();
+  await expect(page.getByRole('heading', { name: 'Proyecto Tarifas KO' })).toBeVisible();
+
+  // Desde Encargos: la unidad pasa a carácter y la tarifa es la del cliente.
+  await page.getByTestId('nav-/trabajo/encargos').click();
+  await page.getByRole('button', { name: /Nuevo encargo/ }).click();
+  await page.getByTestId('job-project').click();
+  await page.getByRole('option', { name: /Proyecto Tarifas KO/ }).click();
+  await expect(page.getByTestId('rate-hint')).toContainText('Tarifa de Estudio Tarifas KO');
+  await expect(page.getByTestId('job-unit')).toHaveValue('char');
+
+  // Revisión: no hay tarifa, se explica y se puede usar la más cercana.
+  await page.getByRole('dialog').locator('select').first().selectOption('review');
+  await expect(page.getByTestId('rate-hint')).toContainText('Sin tarifa de Estudio Tarifas KO');
+  await expect(page.getByTestId('rate-candidate').first()).toContainText('es de traducción');
+  await page.getByRole('button', { name: 'Usar esta tarifa' }).first().click();
+  await expect(page.getByTestId('new-job-rate')).toHaveValue('0,035');
+
+  await page.getByRole('dialog').locator('select').first().selectOption('translation');
+  await page.getByLabel('Título').fill('Lote KO');
+  await page.getByTestId('create-job').click();
+  await expect(page.getByRole('heading', { name: 'Lote KO' })).toBeVisible();
+  await page.getByTestId('job-volume').fill('10000');
+  await page.getByTestId('job-volume').blur();
+  await expect(page.getByTestId('job-amount')).toHaveText(/350,00/);
+});

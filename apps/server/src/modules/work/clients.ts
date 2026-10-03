@@ -2,12 +2,15 @@ import type { FastifyInstance } from 'fastify';
 import { z } from 'zod';
 import {
   CLIENT_KINDS,
+  SERVICES,
+  UNITS,
   clientInputSchema,
   clientUpdateSchema,
   contactInputSchema,
   contactUpdateSchema,
   idSchema,
   labelOf,
+  pairLabel,
   rateInputSchema,
   rateUpdateSchema,
   type Client,
@@ -174,17 +177,23 @@ export function listRates(ctx: AppContext, clientId?: string | null): Rate[] {
  * Tarifa aplicable a un encargo: primero la del cliente con el mismo par de idiomas,
  * después la del cliente sin idiomas, y por último las generales.
  */
-export function resolveRate(
-  ctx: AppContext,
-  q: {
-    clientId: string | null;
-    service: string;
-    /** Sin unidad, se elige la mejor tarifa del servicio en cualquier unidad. */
-    unit?: string | null;
-    sourceLang: string | null;
-    targetLang: string | null;
-  },
-): Rate | null {
+const sameLang = (a: string | null | undefined, b: string | null | undefined) =>
+  (a ?? '').trim().toLowerCase() === (b ?? '').trim().toLowerCase();
+
+/** Una tarifa con idioma sirve si coincide o si el proyecto no indica ese idioma. */
+const langFits = (rateLang: string | null, projectLang: string | null) =>
+  rateLang == null || projectLang == null || sameLang(rateLang, projectLang);
+
+export interface RateQuery {
+  clientId: string | null;
+  service: string;
+  /** Sin unidad, se elige la mejor tarifa del servicio en cualquier unidad. */
+  unit?: string | null;
+  sourceLang: string | null;
+  targetLang: string | null;
+}
+
+export function resolveRate(ctx: AppContext, q: RateQuery): Rate | null {
   const candidates = ctx.sqlite
     .prepare(
       `${RATE_SELECT} WHERE r.deleted_at IS NULL AND r.service = ?
@@ -198,11 +207,12 @@ export function resolveRate(
   >[];
   const rates = candidates.map((r) => decodeRow<Rate>(RATE_COLUMNS, r));
   const score = (r: Rate) => {
-    const langMatch =
-      (r.sourceLang == null || r.sourceLang === q.sourceLang) &&
-      (r.targetLang == null || r.targetLang === q.targetLang);
-    if (!langMatch) return -1;
-    return (r.clientId ? 10 : 0) + (r.sourceLang ? 2 : 0) + (r.targetLang ? 2 : 0);
+    if (!langFits(r.sourceLang, q.sourceLang) || !langFits(r.targetLang, q.targetLang)) return -1;
+    // Una coincidencia exacta de idioma puntúa más que una tarifa «para cualquier idioma».
+    const exact = (rl: string | null, pl: string | null) => (rl && pl && sameLang(rl, pl) ? 2 : 0);
+    return (
+      (r.clientId ? 10 : 0) + exact(r.sourceLang, q.sourceLang) + exact(r.targetLang, q.targetLang)
+    );
   };
   // El orden es estable: a igual puntuación gana la tarifa modificada más recientemente.
   const best = rates
@@ -210,6 +220,84 @@ export function resolveRate(
     .filter((x) => x.s >= 0)
     .sort((a, b) => b.s - a.s)[0];
   return best?.r ?? null;
+}
+
+export interface RateCandidate {
+  rate: Rate;
+  /** Por qué no se ha aplicado («es de revisión», «es para EN→ES»…). */
+  reasons: string[];
+}
+
+/**
+ * Cuando no hay tarifa, explica qué tarifas hay y por qué no encajan: otro servicio, otra
+ * unidad, otros idiomas o un cliente distinto con el mismo nombre (clientes duplicados).
+ */
+export function explainRates(
+  ctx: AppContext,
+  q: RateQuery & { clientName: string | null },
+): { candidates: RateCandidate[]; notes: string[] } {
+  const notes: string[] = [];
+  const twins = q.clientName
+    ? (
+        ctx.sqlite
+          .prepare(
+            `SELECT id FROM clients WHERE deleted_at IS NULL AND id <> ?
+             AND lower(trim(name)) = lower(trim(?))`,
+          )
+          .all(q.clientId ?? '', q.clientName) as { id: string }[]
+      ).map((r) => r.id)
+    : [];
+  const ids = [q.clientId, ...twins].filter((x): x is string => Boolean(x));
+  const rows = ctx.sqlite
+    .prepare(
+      `${RATE_SELECT} WHERE r.deleted_at IS NULL
+       AND (r.client_id IS NULL ${ids.length ? `OR r.client_id IN (${ids.map(() => '?').join(',')})` : ''})
+       ORDER BY r.updated_at DESC`,
+    )
+    .all(...ids) as Record<string, unknown>[];
+  const rates = rows.map((r) => decodeRow<Rate>(RATE_COLUMNS, r));
+  if (!q.clientId)
+    notes.push('El proyecto no tiene cliente: solo se buscan las tarifas generales.');
+  else if (!rates.some((r) => r.clientId === q.clientId))
+    notes.push(`${q.clientName ?? 'El cliente'} no tiene ninguna tarifa.`);
+  if (q.clientId && (!q.sourceLang || !q.targetLang))
+    notes.push('El proyecto no tiene indicados los dos idiomas.');
+  const projectPair = q.sourceLang || q.targetLang ? pairLabel(q.sourceLang, q.targetLang) : null;
+  const candidates = rates.map((rate) => {
+    const reasons: string[] = [];
+    // Peso de cada diferencia: una tarifa del mismo servicio es la candidata más útil.
+    let weight = 0;
+    if (rate.clientId && rate.clientId !== q.clientId) {
+      reasons.push(`es de otro cliente con el mismo nombre («${rate.clientName}»)`);
+      weight += 1;
+    }
+    if (rate.service !== q.service) {
+      reasons.push(`es de ${labelOf(SERVICES, rate.service).toLowerCase()}`);
+      weight += 4;
+    }
+    if (q.unit && rate.unit !== q.unit) {
+      reasons.push(`es por ${labelOf(UNITS, rate.unit).toLowerCase()}`);
+      weight += 1;
+    }
+    if (!langFits(rate.sourceLang, q.sourceLang) || !langFits(rate.targetLang, q.targetLang)) {
+      reasons.push(
+        `es para ${pairLabel(rate.sourceLang, rate.targetLang)}${projectPair ? ` y el proyecto es ${projectPair}` : ''}`,
+      );
+      weight += 2;
+    }
+    return { rate, reasons, weight };
+  });
+  candidates.sort(
+    (a, b) =>
+      a.weight - b.weight || Number(Boolean(b.rate.clientId)) - Number(Boolean(a.rate.clientId)),
+  );
+  return {
+    candidates: candidates
+      .filter((c) => c.reasons.length)
+      .slice(0, 5)
+      .map(({ rate, reasons }) => ({ rate, reasons })),
+    notes,
+  };
 }
 
 export function createClient(ctx: AppContext, raw: unknown): Client {
@@ -349,14 +437,27 @@ export async function clientRoutes(app: FastifyInstance) {
       if (!p) throw new NotFoundError('El proyecto');
       ({ clientId, sourceLang, targetLang } = p);
     }
-    const rate = resolveRate(ctx, {
-      clientId,
-      service: q.service,
-      unit: q.unit,
-      sourceLang,
-      targetLang,
-    });
-    return { rate, source: rate ? (rate.clientId ? 'client' : 'general') : null };
+    const clientName = clientId
+      ? ((
+          ctx.sqlite.prepare('SELECT name FROM clients WHERE id = ?').get(clientId) as
+            { name: string } | undefined
+        )?.name ?? null)
+      : null;
+    const query = { clientId, service: q.service, unit: q.unit, sourceLang, targetLang };
+    const rate = resolveRate(ctx, query);
+    return {
+      rate,
+      source: rate ? (rate.clientId ? 'client' : 'general') : null,
+      context: {
+        clientId,
+        clientName,
+        sourceLang,
+        targetLang,
+        service: q.service,
+        unit: q.unit ?? null,
+      },
+      ...(rate ? { candidates: [], notes: [] } : explainRates(ctx, { ...query, clientName })),
+    };
   });
 
   app.post('/api/rates', async (req, reply) => {

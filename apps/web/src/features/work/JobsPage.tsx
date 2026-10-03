@@ -57,7 +57,21 @@ export function NewJobDialog({
   const [unitTouched, setUnitTouched] = useState(false);
   const [rateMicros, setRateMicros] = useState<number | null>(null);
   const [rateTouched, setRateTouched] = useState(false);
+  const [rateCurrency, setRateCurrency] = useState<string | null>(null);
   const project = useProject(projectId ?? '');
+  // Cada vez que se abre el diálogo o se cambia de proyecto, la unidad y la tarifa vuelven a
+  // ser automáticas (el diálogo sigue montado entre aperturas).
+  const resetRate = () => {
+    setUnitTouched(false);
+    setRateTouched(false);
+    setRateCurrency(null);
+  };
+  useEffect(() => {
+    if (open) {
+      resetRate();
+      setProjectId(fixedProjectId ?? null);
+    }
+  }, [open, fixedProjectId]);
   const resolved = useResolvedRate(projectId, service, unitTouched ? unit : null);
   useEffect(() => {
     if (!resolved.data) return;
@@ -78,7 +92,11 @@ export function NewJobDialog({
           unit,
           volume,
           ...(rateTouched ? { rateMicros } : {}),
-          ...(resolved.data?.rate ? { currency: resolved.data.rate.currency } : {}),
+          ...(rateCurrency
+            ? { currency: rateCurrency }
+            : resolved.data?.rate
+              ? { currency: resolved.data.rate.currency }
+              : {}),
           dueDate: dueDate || null,
           dueTime: dueTime || null,
           poNumber,
@@ -116,7 +134,10 @@ export function NewJobDialog({
                   hint: p.clientName,
                 }))}
                 value={projectId}
-                onChange={setProjectId}
+                onChange={(id) => {
+                  setProjectId(id);
+                  resetRate();
+                }}
                 allowEmpty={false}
                 placeholder="Elegir proyecto…"
                 testId="job-project"
@@ -198,7 +219,7 @@ export function NewJobDialog({
                 }}
                 scale={1_000_000}
                 maxDecimals={6}
-                suffix={resolved.data?.rate?.currency ?? 'EUR'}
+                suffix={rateCurrency ?? resolved.data?.rate?.currency ?? 'EUR'}
                 testId="new-job-rate"
               />
             </Field>
@@ -227,8 +248,11 @@ export function NewJobDialog({
               clientId={project.data?.clientId}
               currentMicros={rateTouched ? rateMicros : undefined}
               onApply={(rate) => {
+                setUnit(rate.unit);
+                setUnitTouched(true);
                 setRateMicros(rate.rateMicros);
-                setRateTouched(false);
+                setRateCurrency(rate.currency);
+                setRateTouched(true);
               }}
             />
           )}

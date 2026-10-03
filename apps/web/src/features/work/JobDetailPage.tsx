@@ -191,7 +191,8 @@ function VolumeSection({
           currentCurrency={job.currency}
           onApply={
             rateEditable
-              ? (rate) => save({ rateMicros: rate.rateMicros, currency: rate.currency })
+              ? (rate) =>
+                  save({ rateMicros: rate.rateMicros, currency: rate.currency, unit: rate.unit })
               : undefined
           }
         />

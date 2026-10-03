@@ -52,7 +52,7 @@ describe('tarifas automáticas', () => {
       'GET',
       `/api/rates/resolve?projectId=${project.id}&service=lqa`,
     );
-    expect(none).toEqual({ rate: null, source: null });
+    expect(none).toMatchObject({ rate: null, source: null });
 
     const job = await req<Job>(
       'POST',
@@ -92,6 +92,88 @@ describe('tarifas automáticas', () => {
     await req('POST', `/api/projects/${project.id}/apply-rates`);
     const updated = await req<Job>('GET', `/api/jobs/${job.id}`);
     expect(updated).toMatchObject({ rateMicros: 40_000, amountCents: 40_000 });
+  });
+});
+
+describe('tarifas: casos sin coincidencia', () => {
+  it('acepta tarifas con idiomas en proyectos sin idiomas y explica por qué no hay tarifa', async () => {
+    const studio = await req<Client>('POST', '/api/clients', { name: 'Estudio Duplicado' });
+    const twin = await req<Client>('POST', '/api/clients', { name: ' estudio duplicado ' });
+    await rate({
+      clientId: studio.id,
+      service: 'translation',
+      unit: 'char',
+      sourceLang: 'ko',
+      targetLang: 'es',
+      rateMicros: 35_000,
+    });
+    await rate({
+      clientId: twin.id,
+      service: 'review',
+      unit: 'char',
+      sourceLang: 'ko',
+      targetLang: 'es',
+      rateMicros: 12_000,
+    });
+
+    // Proyecto sin idiomas (por ejemplo, importado de ClickUp): la tarifa KO→ES sirve.
+    const noLangs = await req<Project>('POST', '/api/projects', {
+      name: 'Sin idiomas',
+      clientId: studio.id,
+      sourceLang: null,
+      targetLang: null,
+    });
+    const r1 = await req<{ rate: Rate | null; notes: string[] }>(
+      'GET',
+      `/api/rates/resolve?projectId=${noLangs.id}&service=translation`,
+    );
+    expect(r1.rate?.rateMicros).toBe(35_000);
+
+    // Revisión: el cliente no tiene, pero su «gemelo» sí; y la de traducción es de otro servicio.
+    const project = await req<Project>('POST', '/api/projects', {
+      name: 'KO-ES',
+      clientId: studio.id,
+      sourceLang: 'ko',
+      targetLang: 'es',
+    });
+    const r2 = await req<{
+      rate: Rate | null;
+      context: { clientName: string };
+      candidates: { rate: Rate; reasons: string[] }[];
+    }>('GET', `/api/rates/resolve?projectId=${project.id}&service=review`);
+    expect(r2.rate).toBeNull();
+    expect(r2.context.clientName).toBe('Estudio Duplicado');
+    expect(r2.candidates.map((c) => c.reasons)).toEqual([
+      ['es de otro cliente con el mismo nombre («estudio duplicado»)'],
+      ['es de traducción'],
+    ]);
+
+    // Otro par de idiomas y otra unidad.
+    const enProject = await req<Project>('POST', '/api/projects', {
+      name: 'EN-ES',
+      clientId: studio.id,
+      sourceLang: 'en',
+      targetLang: 'es',
+    });
+    const r3 = await req<{ rate: Rate | null; candidates: { reasons: string[] }[] }>(
+      'GET',
+      `/api/rates/resolve?projectId=${enProject.id}&service=translation&unit=word`,
+    );
+    expect(r3.rate).toBeNull();
+    expect(r3.candidates[0]!.reasons).toEqual([
+      'es por carácter',
+      'es para KO→ES y el proyecto es EN→ES',
+    ]);
+
+    // Proyecto sin cliente.
+    const orphan = await req<Project>('POST', '/api/projects', { name: 'Sin cliente' });
+    const r4 = await req<{ notes: string[] }>(
+      'GET',
+      `/api/rates/resolve?projectId=${orphan.id}&service=translation`,
+    );
+    expect(r4.notes).toContain(
+      'El proyecto no tiene cliente: solo se buscan las tarifas generales.',
+    );
   });
 });
 
