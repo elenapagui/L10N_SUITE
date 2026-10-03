@@ -2,7 +2,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { pathToFileURL } from 'node:url';
 import { net, protocol } from 'electron';
-import type { EngineHost } from './engine-host';
+import { EngineTimeoutError, type EngineHost } from './engine-host';
 import { isInside } from './paths';
 
 export const APP_ORIGIN = 'app://l10n';
@@ -61,6 +61,11 @@ export function handleAppProtocol(engine: EngineHost, webDir: string): void {
           },
         );
       } catch (error) {
+        if (error instanceof EngineTimeoutError)
+          return new Response(JSON.stringify({ error: 'tiempo_agotado', message: error.message }), {
+            status: 504,
+            headers: { 'content-type': 'application/json; charset=utf-8' },
+          });
         return new Response(
           JSON.stringify({
             error: 'sin_motor',
@@ -71,7 +76,12 @@ export function handleAppProtocol(engine: EngineHost, webDir: string): void {
       }
     }
 
-    let rel = decodeURIComponent(url.pathname);
+    let rel: string;
+    try {
+      rel = decodeURIComponent(url.pathname);
+    } catch {
+      return new Response('No encontrado', { status: 404 });
+    }
     if (rel === '/' || rel === '') rel = '/index.html';
     let file = path.join(webDir, ...rel.split('/').filter(Boolean));
     if (!isInside(webDir, file) || !fs.existsSync(file) || fs.statSync(file).isDirectory()) {

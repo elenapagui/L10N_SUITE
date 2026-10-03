@@ -14,7 +14,7 @@ import {
 import { APP_ORIGIN, handleAppProtocol, registerAppScheme } from './bridge';
 import { EngineHost } from './engine-host';
 import { buildMenu } from './menu';
-import { EXECUTABLE_EXTENSIONS, isInside } from './paths';
+import { BUNDLE_EXTENSIONS, EXECUTABLE_EXTENSIONS, isInside } from './paths';
 import type { EngineStatus } from './protocol';
 import { loadWindowState, trackWindowState } from './window-state';
 
@@ -29,10 +29,10 @@ if (process.env.L10N_DISABLE_GPU === '1') app.disableHardwareAcceleration();
 app.commandLine.appendSwitch('lang', 'es');
 registerAppScheme();
 
-if (!SELFTEST && !app.requestSingleInstanceLock()) {
-  // Ya hay una ventana abierta: se enfoca esa en lugar de abrir otra sobre los mismos datos.
-  app.quit();
-}
+// Si ya hay una ventana abierta, se enfoca esa en lugar de abrir otra sobre los mismos datos.
+// app.exit() sale en el acto: app.quit() dejaría arrancar un segundo motor sobre la misma base.
+const primaryInstance = SELFTEST || app.requestSingleInstanceLock();
+if (!primaryInstance) app.exit(0);
 
 const dataDir = SELFTEST
   ? fs.mkdtempSync(path.join(os.tmpdir(), 'l10n-autocomprobacion-'))
@@ -59,6 +59,7 @@ function log(message: string) {
 }
 
 let mainWindow: BrowserWindow | null = null;
+let quitting = false;
 
 function broadcastEngineStatus(status: EngineStatus) {
   log(`[app] estado del motor: ${status}`);
@@ -115,9 +116,45 @@ function createWindow(): BrowserWindow {
       if (/^https?:\/\//i.test(url)) void shell.openExternal(url);
     }
   });
+  // Si la interfaz se cae, se recarga; pero si se cae una y otra vez, se avisa en lugar de
+  // recargarla sin fin.
+  const crashes: number[] = [];
   win.webContents.on('render-process-gone', (_e, details) => {
     log(`[app] la interfaz se ha cerrado inesperadamente: ${details.reason}`);
-    if (details.reason !== 'clean-exit' && !win.isDestroyed()) win.reload();
+    if (details.reason === 'clean-exit' || win.isDestroyed() || quitting) return;
+    const now = Date.now();
+    while (crashes.length && now - crashes[0]! > 60_000) crashes.shift();
+    crashes.push(now);
+    if (crashes.length <= 3) {
+      win.reload();
+      return;
+    }
+    void dialog
+      .showMessageBox(win, {
+        type: 'error',
+        title: 'L10N Suite',
+        message: 'La ventana se ha cerrado inesperadamente varias veces.',
+        detail:
+          'Tus datos están a salvo. Puedes volver a intentarlo o cerrar la aplicación; el registro está en la carpeta de datos (logs/app.log).',
+        buttons: ['Volver a intentarlo', 'Cerrar L10N Suite'],
+        defaultId: 0,
+        cancelId: 1,
+      })
+      .then(({ response }) => {
+        if (response === 1) app.quit();
+        else if (!win.isDestroyed()) {
+          crashes.length = 0;
+          win.reload();
+        }
+      });
+  });
+
+  // En Windows y Linux, cerrar la ventana cierra la app: se mantiene abierta con el aviso
+  // «Guardando…» mientras se hace la copia y se sincroniza.
+  win.on('close', (event) => {
+    if (quitting || SELFTEST || process.platform === 'darwin') return;
+    event.preventDefault();
+    app.quit();
   });
 
   win.once('ready-to-show', () => {
@@ -158,19 +195,24 @@ function registerIpc() {
   ipcMain.handle('shell:open-path', async (_e, target: string) => {
     if (typeof target !== 'string' || target === '') return 'Ruta no válida';
     let stat: fs.Stats;
+    let real: string;
     try {
-      stat = fs.statSync(target);
+      // Se comprueba el destino real (un acceso directo o enlace puede apuntar a un programa).
+      real = fs.realpathSync(target);
+      stat = fs.statSync(real);
     } catch {
       return 'No se encuentra el archivo o la carpeta.';
     }
-    if (!stat.isDirectory()) {
-      const ext = path.extname(target).toLowerCase();
-      if (!isInside(dataDir, target) || EXECUTABLE_EXTENSIONS.has(ext)) {
-        shell.showItemInFolder(target);
-        return '';
-      }
+    const exts = [path.extname(target), path.extname(real)].map((e) => e.toLowerCase());
+    // Los paquetes de macOS (.app, .pkg…) son carpetas, pero el sistema los ejecuta.
+    const unsafe = stat.isDirectory()
+      ? exts.some((e) => BUNDLE_EXTENSIONS.has(e))
+      : !isInside(dataDir, real) || exts.some((e) => EXECUTABLE_EXTENSIONS.has(e));
+    if (unsafe) {
+      shell.showItemInFolder(target);
+      return '';
     }
-    return shell.openPath(target);
+    return shell.openPath(real);
   });
 
   ipcMain.handle('shell:show-item', async (_e, target: string) => {
@@ -185,6 +227,9 @@ function registerIpc() {
   ipcMain.handle('app:reload', async (e) => {
     BrowserWindow.fromWebContents(e.sender)?.reload();
   });
+
+  ipcMain.handle('engine:get-status', async () => engine.currentStatus);
+  ipcMain.handle('engine:retry', async () => engine.retry());
 }
 
 /** Autocomprobación de la app empaquetada: arranca, migra, hace una copia y carga la interfaz. */
@@ -253,20 +298,24 @@ async function runSelfTest(win: BrowserWindow): Promise<void> {
 }
 
 app.on('second-instance', () => {
-  if (mainWindow) {
+  if (mainWindow && !mainWindow.isDestroyed()) {
     if (mainWindow.isMinimized()) mainWindow.restore();
+    mainWindow.show();
     mainWindow.focus();
   }
 });
 
-let quitting = false;
 app.on('before-quit', (event) => {
   if (quitting || SELFTEST) return;
   event.preventDefault();
   quitting = true;
-  for (const win of BrowserWindow.getAllWindows()) win.hide();
+  // La ventana sigue visible con un aviso: el cierre puede tardar (copia y sincronización).
+  for (const win of BrowserWindow.getAllWindows()) win.webContents.send('app:closing');
   log('[app] cerrando: copia al cerrar y cierre de la base de datos');
-  void engine.stop().finally(() => app.quit());
+  void engine.stop().finally(() => {
+    for (const win of BrowserWindow.getAllWindows()) win.destroy();
+    app.quit();
+  });
 });
 
 app.on('window-all-closed', () => {
@@ -274,6 +323,7 @@ app.on('window-all-closed', () => {
 });
 
 app.on('activate', () => {
+  if (quitting) return;
   if (BrowserWindow.getAllWindows().length === 0) mainWindow = createWindow();
 });
 
@@ -282,6 +332,7 @@ process.on('uncaughtException', (error) =>
 );
 
 void app.whenReady().then(() => {
+  if (!primaryInstance) return;
   log(`[app] L10N Suite ${app.getVersion()} — datos en ${dataDir}`);
   session.defaultSession.setPermissionRequestHandler((_wc, permission, callback) => {
     callback(permission === 'clipboard-sanitized-write' || permission === 'notifications');

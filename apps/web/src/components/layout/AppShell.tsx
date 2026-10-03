@@ -1,7 +1,8 @@
 import { useEffect, useState } from 'react';
 import { Outlet } from '@tanstack/react-router';
 import { Moon, Search, Sun, WifiOff } from 'lucide-react';
-import { Kbd } from '@/components/ui/misc';
+import { Button } from '@/components/ui/button';
+import { Kbd, Spinner } from '@/components/ui/misc';
 import { useAppInfo, useSettings, useUpdateSettings } from '@/hooks/core';
 import { applyTheme, useThemeSync } from '@/hooks/theme';
 import { desktop, modKey } from '@/lib/desktop';
@@ -46,14 +47,47 @@ function ThemeToggle() {
 
 function EngineBanner() {
   const [status, setStatus] = useState<'ready' | 'restarting' | 'failed'>('ready');
-  useEffect(() => desktop?.onEngineStatus(setStatus), []);
+  useEffect(() => {
+    // Tras recargar la ventana, el motor puede seguir caído: se consulta su estado.
+    void desktop?.getEngineStatus?.().then((s) => s === 'failed' && setStatus(s));
+    return desktop?.onEngineStatus(setStatus);
+  }, []);
   if (status === 'ready') return null;
   return (
     <div className="flex items-center gap-2 border-b border-warning/40 bg-warning/15 px-4 py-2 text-sm">
       <WifiOff className="size-4" />
-      {status === 'restarting'
-        ? 'Reconectando con el motor de la aplicación…'
-        : 'El motor de la aplicación no responde. Cierra y vuelve a abrir L10N Suite.'}
+      {status === 'restarting' ? (
+        'Reconectando con el motor de la aplicación…'
+      ) : (
+        <>
+          El motor de la aplicación no responde.
+          {desktop?.retryEngine ? (
+            <Button size="sm" variant="outline" onClick={() => void desktop!.retryEngine!()}>
+              Reintentar
+            </Button>
+          ) : (
+            ' Cierra y vuelve a abrir L10N Suite.'
+          )}
+        </>
+      )}
+    </div>
+  );
+}
+
+/** Al cerrar la app de escritorio: la copia y la sincronización pueden tardar unos segundos. */
+function ClosingOverlay() {
+  const [closing, setClosing] = useState(false);
+  useEffect(() => desktop?.onClosing?.(() => setClosing(true)), []);
+  if (!closing) return null;
+  return (
+    <div
+      role="alertdialog"
+      aria-live="assertive"
+      className="fixed inset-0 z-[100] flex flex-col items-center justify-center gap-3 bg-background/90 text-sm backdrop-blur-sm"
+    >
+      <Spinner />
+      <p className="font-medium">Guardando una copia y sincronizando…</p>
+      <p className="text-muted-foreground">L10N Suite se cerrará en cuanto termine.</p>
     </div>
   );
 }
@@ -104,6 +138,7 @@ export function AppShell() {
         <Sidebar collapsed={collapsed} onToggle={toggleSidebar} />
         <div className="flex min-w-0 flex-1 flex-col print:block">
           <EngineBanner />
+          <ClosingOverlay />
           <header className="flex h-12 shrink-0 items-center gap-2 border-b px-4 print:hidden">
             <button
               type="button"

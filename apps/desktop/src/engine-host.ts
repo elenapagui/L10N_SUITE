@@ -6,6 +6,15 @@ interface Pending {
   reject: (err: Error) => void;
 }
 
+/** Ninguna operación local debería tardar tanto; así una petición colgada no bloquea la interfaz. */
+const REQUEST_TIMEOUT_MS = 5 * 60_000;
+
+export class EngineTimeoutError extends Error {
+  constructor() {
+    super('La operación ha tardado demasiado y se ha cancelado la espera.');
+  }
+}
+
 /**
  * Arranca y supervisa el motor. Si el proceso se cae, lo reinicia (hasta 5 veces por minuto)
  * y avisa a la interfaz para que muestre «Reconectando…».
@@ -18,6 +27,7 @@ export class EngineHost {
   private ready = false;
   private stopping = false;
   private restarts: number[] = [];
+  private status: EngineStatus = 'restarting';
   lastFatal: string | null = null;
 
   constructor(
@@ -27,7 +37,18 @@ export class EngineHost {
     private readonly log: (msg: string) => void,
   ) {}
 
+  get currentStatus(): EngineStatus {
+    return this.status;
+  }
+
+  private setStatus(status: EngineStatus) {
+    this.status = status;
+    this.onStatus(status);
+  }
+
   start(): void {
+    // Durante el cierre no se vuelve a arrancar (por ejemplo, un reinicio programado).
+    if (this.stopping || this.child) return;
     this.ready = false;
     const child = utilityProcess.fork(this.enginePath, [], {
       serviceName: 'L10N Suite (motor)',
@@ -44,7 +65,7 @@ export class EngineHost {
   private onMessage(msg: EngineMessage) {
     if (msg.type === 'ready') {
       this.ready = true;
-      this.onStatus('ready');
+      this.setStatus('ready');
       for (const w of this.readyWaiters.splice(0)) w.resolve();
     } else if (msg.type === 'fatal') {
       this.lastFatal = msg.message;
@@ -68,14 +89,23 @@ export class EngineHost {
     this.restarts = this.restarts.filter((t) => now - t < 60_000);
     this.log(`[motor] se ha detenido (código ${code})`);
     if (this.restarts.length >= 5) {
-      this.onStatus('failed');
+      this.setStatus('failed');
       for (const w of this.readyWaiters.splice(0))
         w.reject(new Error(this.lastFatal ?? 'El motor no arranca'));
       return;
     }
     this.restarts.push(now);
-    this.onStatus('restarting');
+    this.setStatus('restarting');
     setTimeout(() => this.start(), 500 * this.restarts.length);
+  }
+
+  /** «Reintentar» tras un fallo: vuelve a arrancar el motor desde cero. */
+  retry(): void {
+    if (this.stopping || this.child || this.status !== 'failed') return;
+    this.restarts = [];
+    this.lastFatal = null;
+    this.setStatus('restarting');
+    this.start();
   }
 
   waitReady(timeoutMs = 60_000): Promise<void> {
@@ -98,18 +128,36 @@ export class EngineHost {
     });
   }
 
-  async request(req: {
-    method: string;
-    url: string;
-    headers: Record<string, string>;
-    body?: Uint8Array;
-  }): Promise<EngineResponse> {
+  async request(
+    req: {
+      method: string;
+      url: string;
+      headers: Record<string, string>;
+      body?: Uint8Array;
+    },
+    timeoutMs = REQUEST_TIMEOUT_MS,
+  ): Promise<EngineResponse> {
+    if (this.stopping) throw new Error('La aplicación se está cerrando');
     await this.waitReady();
     const child = this.child;
     if (!child) throw new Error('El motor no está disponible');
     const id = this.nextId++;
     return new Promise((resolve, reject) => {
-      this.pending.set(id, { resolve, reject });
+      const timer = setTimeout(() => {
+        // Si la respuesta llega después, se descarta.
+        this.pending.delete(id);
+        reject(new EngineTimeoutError());
+      }, timeoutMs);
+      this.pending.set(id, {
+        resolve: (res) => {
+          clearTimeout(timer);
+          resolve(res);
+        },
+        reject: (err) => {
+          clearTimeout(timer);
+          reject(err);
+        },
+      });
       child.postMessage({ type: 'request', id, ...req });
     });
   }

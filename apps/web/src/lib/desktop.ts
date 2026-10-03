@@ -14,6 +14,10 @@ export interface DesktopBridge {
   getPathForFile(file: File): string;
   onEngineStatus(callback: (status: 'ready' | 'restarting' | 'failed') => void): () => void;
   reload(): Promise<void>;
+  /** Desde la v0.3.1 (opcionales por si la interfaz y la app no coinciden). */
+  getEngineStatus?(): Promise<'ready' | 'restarting' | 'failed'>;
+  retryEngine?(): Promise<void>;
+  onClosing?(callback: () => void): () => void;
 }
 
 declare global {

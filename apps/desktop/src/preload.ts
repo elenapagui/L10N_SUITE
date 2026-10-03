@@ -22,6 +22,13 @@ contextBridge.exposeInMainWorld('l10n', {
   notify: (title: string, body: string) => ipcRenderer.invoke('app:notify', title, body),
   getPathForFile: (file: File) => webUtils.getPathForFile(file),
   reload: () => ipcRenderer.invoke('app:reload'),
+  getEngineStatus: () => ipcRenderer.invoke('engine:get-status'),
+  retryEngine: () => ipcRenderer.invoke('engine:retry'),
+  onClosing: (callback: () => void) => {
+    const listener = () => callback();
+    ipcRenderer.on('app:closing', listener);
+    return () => ipcRenderer.removeListener('app:closing', listener);
+  },
   onEngineStatus: (callback: (status: string) => void) => {
     const listener = (_event: unknown, status: string) => callback(status);
     ipcRenderer.on('engine:status', listener);

@@ -113,9 +113,11 @@ async function main() {
 
 main().catch((error: unknown) => {
   const message = error instanceof Error ? `${error.message}\n${error.stack ?? ''}` : String(error);
+  process.stderr.write(`${message}\n`);
   try {
     parentPort.postMessage({ type: 'fatal', message });
   } finally {
-    process.exit(1);
+    // postMessage es asíncrono: se espera un momento para que el aviso llegue antes de salir.
+    setTimeout(() => process.exit(1), 300);
   }
 });
