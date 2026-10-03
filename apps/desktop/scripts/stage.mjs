@@ -72,7 +72,15 @@ await build({
   entryPoints: [path.join(desktopDir, 'src', 'engine.ts')],
   outfile: path.join(out, 'dist', 'engine.cjs'),
   external: ['electron', 'better-sqlite3'],
+  // Kiwi (análisis morfológico) es un módulo ESM que usa import.meta.url: en CJS se calcula.
+  banner: { js: "const __importMetaUrl = require('node:url').pathToFileURL(__filename).href;" },
+  define: { ...common.define, 'import.meta.url': '__importMetaUrl' },
 });
+// Módulo WebAssembly del analizador morfológico del coreano (Kiwi), junto al motor.
+fs.copyFileSync(
+  path.join(repoRoot, 'node_modules', 'kiwi-nlp', 'dist', 'kiwi-wasm.wasm'),
+  path.join(out, 'dist', 'kiwi-wasm.wasm'),
+);
 
 step('Copiando la interfaz y las migraciones');
 fs.cpSync(webDist, path.join(out, 'web'), {

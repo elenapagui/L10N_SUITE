@@ -21,6 +21,7 @@ import { reportRoutes } from './modules/finance/reports';
 import { reviewRoutes } from './modules/review';
 import { syncRoutes } from './modules/sync';
 import { markDirty, syncOnStartup } from './services/sync';
+import { isModelInstalled, kickAnalysis } from './services/morph';
 import { summaryRoutes } from './modules/finance/summary';
 import { clientRoutes } from './modules/work/clients';
 import { dashboardRoutes } from './modules/work/dashboard';
@@ -132,8 +133,14 @@ export async function buildApp(options: BuildOptions): Promise<FastifyInstance> 
       markDirty(ctx);
     }
   });
+  let morphTimer: NodeJS.Timeout | null = null;
   app.addHook('onReady', async () => {
     await syncOnStartup(ctx);
+    // Si el analizador del coreano está instalado, se termina de analizar lo pendiente.
+    if (isModelInstalled(ctx)) morphTimer = setTimeout(() => kickAnalysis(ctx), 5000);
+  });
+  app.addHook('onClose', async () => {
+    if (morphTimer) clearTimeout(morphTimer);
   });
 
   await app.register(systemRoutes);

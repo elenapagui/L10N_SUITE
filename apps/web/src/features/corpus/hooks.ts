@@ -8,6 +8,7 @@ import type {
   CorpusVersion,
   ConcordanceQuery,
   FrequencyRow,
+  MorphStatus,
   Segment,
 } from '@l10n/shared';
 import { api } from '@/lib/api';
@@ -68,7 +69,7 @@ export const useCorpusStats = (filters: CorpusFilters) =>
 export const useFrequencies = (
   lang: string,
   filters: CorpusFilters,
-  opts: { limit: number; minLength: number; stopwords: boolean },
+  opts: { limit: number; minLength: number; stopwords: boolean; unit?: 'word' | 'lemma' },
 ) =>
   useQuery({
     queryKey: ['corpus-frequencies', lang, filters, opts],
@@ -106,3 +107,11 @@ export const CORPUS_KEYS = [
   'corpus-versions',
   'concordance',
 ];
+
+/** Estado del análisis morfológico del coreano; se actualiza solo mientras descarga o analiza. */
+export const useMorphStatus = () =>
+  useQuery({
+    queryKey: ['corpus-morph'],
+    queryFn: () => api<MorphStatus>('/corpus/morph'),
+    refetchInterval: (q) => (q.state.data?.downloading || q.state.data?.analyzing ? 1500 : false),
+  });

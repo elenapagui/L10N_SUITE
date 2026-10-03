@@ -260,12 +260,17 @@ export const SEARCH_MODES = [
     label: 'Expresión regular',
     help: 'Sintaxis de JavaScript, sin distinguir mayúsculas',
   },
+  {
+    value: 'lemma',
+    label: 'Lema (coreano)',
+    help: 'Todas las formas de la palabra: 먹다 → 먹었다, 먹고…; 마법사 → 마법사가, 마법사를…',
+  },
 ] as const;
 export type SearchMode = (typeof SEARCH_MODES)[number]['value'];
 
 export const searchConditionSchema = z.object({
   lang: langSchema,
-  mode: z.enum(['text', 'word', 'prefix', 'wildcard', 'regex']).default('text'),
+  mode: z.enum(['text', 'word', 'prefix', 'wildcard', 'regex', 'lemma']).default('text'),
   query: z.string().trim().min(1, 'Escribe qué buscar').max(500),
   negate: z.boolean().default(false),
   caseSensitive: z.boolean().default(false),
@@ -311,10 +316,14 @@ export interface ConcordanceResult {
   /** Se alcanzó el máximo de coincidencias que se ordenan; el total es exacto igualmente. */
   truncated: boolean;
   elapsedMs: number;
+  /** Aviso (por ejemplo, análisis morfológico aún en curso). */
+  notice?: string;
 }
 
 export interface FrequencyRow {
   token: string;
+  /** Categoría gramatical (solo en las listas por lema del coreano). */
+  tag?: string;
   count: number;
   segments: number;
 }
@@ -403,3 +412,39 @@ export const EXPORT_FORMATS = [
   { value: 'json', label: 'JSON' },
 ] as const;
 export type CorpusExportFormat = (typeof EXPORT_FORMATS)[number]['value'];
+
+/** Estado del análisis morfológico del coreano. */
+export interface MorphStatus {
+  version: string;
+  installed: boolean;
+  downloading: { received: number; total: number | null } | null;
+  analyzing: { done: number; total: number } | null;
+  /** Segmentos con texto coreano y cuántos están analizados. */
+  total: number;
+  analyzed: number;
+  error: string | null;
+}
+
+/** Categorías gramaticales de Kiwi (etiquetas del Sejong) en español. */
+export function koreanPosLabel(tag: string): string {
+  if (tag === 'NNG' || tag === 'NNB') return 'sustantivo';
+  if (tag === 'NNP') return 'nombre propio';
+  if (tag === 'NP') return 'pronombre';
+  if (tag === 'NR') return 'numeral';
+  if (tag === 'VV') return 'verbo';
+  if (tag === 'VA') return 'adjetivo';
+  if (tag === 'VX') return 'auxiliar';
+  if (tag === 'VCP' || tag === 'VCN') return 'cópula';
+  if (tag === 'MM') return 'determinante';
+  if (tag === 'MAG' || tag === 'MAJ') return 'adverbio';
+  if (tag === 'IC') return 'interjección';
+  if (tag.startsWith('J')) return 'partícula';
+  if (tag.startsWith('E')) return 'terminación';
+  if (tag === 'XPN') return 'prefijo';
+  if (tag.startsWith('XS')) return 'sufijo';
+  if (tag === 'XR') return 'raíz';
+  if (tag === 'SL') return 'palabra extranjera';
+  if (tag === 'SH') return 'hanja';
+  if (tag === 'SN') return 'número';
+  return tag;
+}

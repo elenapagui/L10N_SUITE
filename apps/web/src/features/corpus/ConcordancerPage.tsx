@@ -238,7 +238,15 @@ export function ConcordancerPage() {
   };
 
   const update = (i: number, patch: Partial<Cond>) =>
-    setConds((cs) => cs.map((c, j) => (j === i ? { ...c, ...patch } : c)));
+    setConds((cs) =>
+      cs.map((c, j) => {
+        if (j !== i) return c;
+        const next = { ...c, ...patch };
+        // La búsqueda por lema solo existe para el coreano.
+        if (next.mode === 'lemma' && next.lang !== 'ko') next.mode = 'text';
+        return next;
+      }),
+    );
   const r = run.data;
 
   const load = (q: ConcordanceQuery) => {
@@ -293,7 +301,7 @@ export function ConcordancerPage() {
               aria-label="Modo"
               title={SEARCH_MODES.find((m) => m.value === c.mode)?.help}
             >
-              {SEARCH_MODES.map((m) => (
+              {SEARCH_MODES.filter((m) => m.value !== 'lemma' || c.lang === 'ko').map((m) => (
                 <option key={m.value} value={m.value}>
                   {m.label}
                 </option>
@@ -436,6 +444,11 @@ export function ConcordancerPage() {
               {r.truncated && (
                 <span className="text-xs text-muted-foreground">
                   Se muestran y ordenan las primeras 100 000.
+                </span>
+              )}
+              {r.notice && (
+                <span className="basis-full text-xs text-amber-700 dark:text-warning">
+                  {r.notice}
                 </span>
               )}
               <label className="ml-auto flex items-center gap-2">

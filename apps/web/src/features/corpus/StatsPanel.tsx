@@ -1,6 +1,12 @@
 import { useState } from 'react';
 import { Download } from 'lucide-react';
-import { CORPUS_LANGS, formatNumber, langLabel, type CorpusFilters } from '@l10n/shared';
+import {
+  CORPUS_LANGS,
+  formatNumber,
+  koreanPosLabel,
+  langLabel,
+  type CorpusFilters,
+} from '@l10n/shared';
 import { Button } from '@/components/ui/button';
 import { NativeSelect } from '@/components/ui/input';
 import { Checkbox, Spinner } from '@/components/ui/misc';
@@ -8,7 +14,8 @@ import { Table, TBody, TD, TH, THead, TR } from '@/components/ui/table';
 import { ChartFrame, HBarList } from '@/features/finance/charts';
 import { Stat } from '@/features/work/shared';
 import { FiltersPanel } from './FiltersPanel';
-import { useCorpusStats, useFrequencies } from './hooks';
+import { useCorpusStats, useFrequencies, useMorphStatus } from './hooks';
+import { MorphPanel } from './MorphPanel';
 
 function Distribution({
   title,
@@ -79,15 +86,28 @@ function FrequencyList({ filters, langs }: { filters: CorpusFilters; langs: stri
   const [lang, setLang] = useState(langs[0] ?? 'ko');
   const [stopwords, setStopwords] = useState(true);
   const [minLength, setMinLength] = useState(1);
-  const q = useFrequencies(lang, filters, { limit: 500, minLength, stopwords });
+  const [unit, setUnit] = useState<'word' | 'lemma'>('word');
+  const byLemma = lang === 'ko' && unit === 'lemma';
+  const morph = useMorphStatus();
+  const lemmaReady = Boolean(morph.data?.installed && morph.data.analyzed > 0);
+  const q = useFrequencies(lang, filters, {
+    limit: 500,
+    minLength: byLemma ? 1 : minLength,
+    stopwords,
+    unit: byLemma && lemmaReady ? 'lemma' : 'word',
+  });
   return (
     <section className="rounded-lg border bg-card p-4">
       <header className="mb-3 flex flex-wrap items-center gap-3">
         <div className="mr-auto">
           <h2 className="font-medium">Lista de frecuencias</h2>
           <p className="text-xs text-muted-foreground">
-            {lang === 'ko' ? 'Eojeol (unidades entre espacios)' : 'Palabras en minúsculas'}; las 500
-            más frecuentes.
+            {byLemma
+              ? 'Lemas con su categoría (análisis morfológico)'
+              : lang === 'ko'
+                ? 'Eojeol (unidades entre espacios)'
+                : 'Palabras en minúsculas'}
+            ; las 500 más frecuentes.
           </p>
         </div>
         <NativeSelect
@@ -102,22 +122,36 @@ function FrequencyList({ filters, langs }: { filters: CorpusFilters; langs: stri
             </option>
           ))}
         </NativeSelect>
-        <NativeSelect
-          className="h-8 w-40"
-          value={String(minLength)}
-          onChange={(e) => setMinLength(Number(e.target.value))}
-          aria-label="Longitud mínima"
-        >
-          {[1, 2, 3, 4].map((n) => (
-            <option key={n} value={n}>
-              {n === 1 ? 'Cualquier longitud' : `${n}+ caracteres`}
-            </option>
-          ))}
-        </NativeSelect>
-        {(lang === 'es' || lang === 'en') && (
+        {lang === 'ko' && (
+          <NativeSelect
+            className="h-8 w-44"
+            value={unit}
+            onChange={(e) => setUnit(e.target.value as 'word' | 'lemma')}
+            aria-label="Unidad"
+            data-testid="freq-unit"
+          >
+            <option value="word">Eojeol</option>
+            <option value="lemma">Lemas (morfología)</option>
+          </NativeSelect>
+        )}
+        {!byLemma && (
+          <NativeSelect
+            className="h-8 w-40"
+            value={String(minLength)}
+            onChange={(e) => setMinLength(Number(e.target.value))}
+            aria-label="Longitud mínima"
+          >
+            {[1, 2, 3, 4].map((n) => (
+              <option key={n} value={n}>
+                {n === 1 ? 'Cualquier longitud' : `${n}+ caracteres`}
+              </option>
+            ))}
+          </NativeSelect>
+        )}
+        {(lang === 'es' || lang === 'en' || byLemma) && (
           <label className="flex items-center gap-2 text-sm">
             <Checkbox checked={stopwords} onCheckedChange={(v) => setStopwords(v === true)} />
-            Sin palabras vacías
+            {byLemma ? 'Sin partículas ni terminaciones' : 'Sin palabras vacías'}
           </label>
         )}
         <Button
@@ -129,8 +163,14 @@ function FrequencyList({ filters, langs }: { filters: CorpusFilters; langs: stri
             download(
               `frecuencias-${lang}.csv`,
               toCSV([
-                ['Forma', 'Frecuencia', 'Segmentos'],
-                ...q.data.rows.map((r) => [r.token, r.count, r.segments]),
+                byLemma
+                  ? ['Lema', 'Categoría', 'Frecuencia', 'Segmentos']
+                  : ['Forma', 'Frecuencia', 'Segmentos'],
+                ...q.data.rows.map((r) =>
+                  byLemma
+                    ? [r.token, koreanPosLabel(r.tag ?? ''), r.count, r.segments]
+                    : [r.token, r.count, r.segments],
+                ),
               ]),
             )
           }
@@ -138,7 +178,12 @@ function FrequencyList({ filters, langs }: { filters: CorpusFilters; langs: stri
           <Download /> CSV
         </Button>
       </header>
-      {!q.data ? (
+      {byLemma && !lemmaReady ? (
+        <p className="rounded-md border border-dashed p-4 text-sm text-muted-foreground">
+          Para contar lemas, descarga el analizador y espera a que termine el análisis (arriba, en
+          «Análisis morfológico del coreano»).
+        </p>
+      ) : !q.data ? (
         <Spinner />
       ) : (
         <>
@@ -153,18 +198,24 @@ function FrequencyList({ filters, langs }: { filters: CorpusFilters; langs: stri
               <THead>
                 <TR>
                   <TH className="w-12 text-right">#</TH>
-                  <TH>Forma</TH>
+                  <TH>{byLemma ? 'Lema' : 'Forma'}</TH>
+                  {byLemma && <TH>Categoría</TH>}
                   <TH className="text-right">Frecuencia</TH>
                   <TH className="text-right">Segmentos</TH>
                 </TR>
               </THead>
               <TBody>
                 {q.data.rows.map((r, i) => (
-                  <TR key={r.token}>
+                  <TR key={`${r.token}/${r.tag ?? ''}`}>
                     <TD className="text-right text-muted-foreground tabular-nums">{i + 1}</TD>
                     <TD lang={lang} className="font-medium">
                       {r.token}
                     </TD>
+                    {byLemma && (
+                      <TD className="text-xs text-muted-foreground">
+                        {koreanPosLabel(r.tag ?? '')}
+                      </TD>
+                    )}
                     <TD className="text-right tabular-nums">{formatNumber(r.count, 0)}</TD>
                     <TD className="text-right tabular-nums">{formatNumber(r.segments, 0)}</TD>
                   </TR>
@@ -184,6 +235,7 @@ export function StatsPanel() {
   const s = stats.data;
   return (
     <div className="grid gap-4">
+      <MorphPanel />
       <div className="flex items-center gap-2">
         <FiltersPanel value={filters} onChange={setFilters} />
         <span className="text-sm text-muted-foreground">

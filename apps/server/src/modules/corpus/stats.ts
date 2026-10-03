@@ -16,6 +16,8 @@ import {
   type FrequencyRow,
 } from '@l10n/shared';
 import type { AppContext } from '../../context';
+import { downloadModel, kickAnalysis, morphStatus } from '../../services/morph';
+import { ValidationError } from '../../lib/errors';
 import { parse } from '../../lib/validate';
 import { CORPUS_JOINS, filterSql } from './filters';
 
@@ -197,6 +199,31 @@ export function frequencyList(
   return { rows, tokens, types: counts.size };
 }
 
+/** Lista de frecuencias por lema del coreano (con el análisis morfológico de Kiwi). */
+export function lemmaFrequencyList(
+  ctx: AppContext,
+  opts: { filters: CorpusFilters; limit: number; contentOnly: boolean },
+): { rows: FrequencyRow[]; tokens: number; types: number } {
+  const f = filterSql(ctx, opts.filters);
+  const where = ["st.lang = 'ko'", ...f.where];
+  if (opts.contentOnly)
+    where.push(
+      "m.tag NOT LIKE 'J%' AND m.tag NOT LIKE 'E%' AND m.tag NOT LIKE 'XS%' AND m.tag != 'VCP'",
+    );
+  const base = `FROM segment_morphs m JOIN segments s ON s.id = m.segment_id
+    JOIN segment_texts st ON st.segment_id = s.id ${CORPUS_JOINS} WHERE ${where.join(' AND ')}`;
+  const rows = ctx.sqlite
+    .prepare(
+      `SELECT m.lemma AS token, m.tag, COUNT(*) AS count, COUNT(DISTINCT m.segment_id) AS segments
+       ${base} GROUP BY m.lemma, m.tag ORDER BY count DESC, m.lemma LIMIT ?`,
+    )
+    .all(...f.params, opts.limit) as FrequencyRow[];
+  const totals = ctx.sqlite
+    .prepare(`SELECT COUNT(*) AS tokens, COUNT(DISTINCT m.lemma || '/' || m.tag) AS types ${base}`)
+    .get(...f.params) as { tokens: number; types: number };
+  return { rows, ...totals };
+}
+
 export async function statsRoutes(app: FastifyInstance) {
   const ctx = app.ctx;
 
@@ -216,10 +243,39 @@ export async function statsRoutes(app: FastifyInstance) {
           .enum(['true', 'false'])
           .default('false')
           .transform((v) => v === 'true'),
+        unit: z.enum(['word', 'lemma']).default('word'),
       }),
       req.query,
     );
+    if (q.unit === 'lemma') {
+      if (q.lang !== 'ko')
+        throw new ValidationError(
+          'Las frecuencias por lema solo están disponibles para el coreano.',
+        );
+      return lemmaFrequencyList(ctx, {
+        filters: parseFilters(q.filters),
+        limit: q.limit,
+        contentOnly: q.stopwords,
+      });
+    }
     return frequencyList(ctx, { ...q, filters: parseFilters(q.filters) });
+  });
+
+  app.get('/api/corpus/morph', async () => morphStatus(ctx));
+
+  /** Descarga el modelo de Kiwi (unos 90 MB) y, al terminar, analiza el corpus coreano. */
+  app.post('/api/corpus/morph/download', async () => {
+    downloadModel(ctx)
+      .then(() => kickAnalysis(ctx))
+      .catch((err: unknown) => ctx.logger.warn({ err }, 'Falló la descarga del modelo de Kiwi'));
+    await new Promise((ok) => setTimeout(ok, 50));
+    return morphStatus(ctx);
+  });
+
+  app.post('/api/corpus/morph/analyze', async () => {
+    kickAnalysis(ctx);
+    await new Promise((ok) => setTimeout(ok, 50));
+    return morphStatus(ctx);
   });
 }
 

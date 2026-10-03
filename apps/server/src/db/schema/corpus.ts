@@ -85,6 +85,36 @@ export const segmentTexts = sqliteTable(
   ],
 );
 
+/**
+ * Análisis morfológico del coreano (Kiwi): un morfema por fila, con su lema (los verbos y
+ * adjetivos con «-다») y su categoría. Posiciones en caracteres dentro del texto coreano.
+ */
+export const segmentMorphs = sqliteTable(
+  'segment_morphs',
+  {
+    id: integer('id').primaryKey({ autoIncrement: true }),
+    segmentId: integer('segment_id')
+      .notNull()
+      .references(() => segments.id, { onDelete: 'cascade' }),
+    lemma: text('lemma').notNull(),
+    tag: text('tag').notNull(),
+    start: integer('start').notNull(),
+    end: integer('end').notNull(),
+  },
+  (t) => [
+    index('segment_morphs_lemma_idx').on(t.lemma),
+    index('segment_morphs_segment_idx').on(t.segmentId),
+  ],
+);
+
+/** Segmentos cuyo texto coreano ya se ha analizado (se borra si el texto cambia). */
+export const segmentMorphDone = sqliteTable('segment_morph_done', {
+  segmentId: integer('segment_id')
+    .primaryKey()
+    .references(() => segments.id, { onDelete: 'cascade' }),
+  analyzedAt: text('analyzed_at').notNull(),
+});
+
 /** Esquema de anotación jerárquico (técnicas de traducción, honoríficos…). */
 export const annotationTags = sqliteTable(
   'annotation_tags',

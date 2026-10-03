@@ -14,10 +14,12 @@ import {
   type ConcordanceHit,
   type ConcordanceQuery,
   type ConcordanceResult,
+  type SearchCondition,
 } from '@l10n/shared';
 import type { AppContext } from '../../context';
 import { ValidationError } from '../../lib/errors';
 import { parse } from '../../lib/validate';
+import { kickAnalysis, morphStatus, queryLemma } from '../../services/morph';
 import { contentDisposition } from '../attachments';
 import { textsFor } from './catalog';
 import { CORPUS_JOINS, filterSql } from './filters';
@@ -41,13 +43,67 @@ function ftsPhrase(literal: string): string {
   return `"${literal.replace(/"/g, '""')}"`;
 }
 
+/** Amplía un morfema a la palabra (eojeol) que lo contiene, para mostrarla en la línea KWIC. */
+function lemmaKwic(
+  text: string,
+  spans: [number, number][],
+  contextChars: number,
+  max: number,
+): { start: number; end: number; left: string; match: string; right: string }[] {
+  const isWord = (ch: string | undefined) => ch !== undefined && /[\p{L}\p{N}]/u.test(ch);
+  const seen = new Set<number>();
+  const flat = (s: string) => s.replace(/\s+/g, ' ');
+  const out = [];
+  for (const [s0, e0] of [...spans].sort((a, b) => a[0] - b[0])) {
+    let start = s0;
+    let end = e0;
+    while (start > 0 && isWord(text[start - 1])) start--;
+    while (end < text.length && isWord(text[end])) end++;
+    if (seen.has(start)) continue;
+    seen.add(start);
+    out.push({
+      start,
+      end,
+      left: flat(text.slice(Math.max(0, start - contextChars), start)),
+      match: text.slice(start, end),
+      right: flat(text.slice(end, end + contextChars)),
+    });
+    if (out.length >= max) break;
+  }
+  return out;
+}
+
 /** Busca en el corpus. Devuelve las coincidencias de la página pedida, ya con su contexto. */
-export function searchCorpus(
+export async function searchCorpus(
   ctx: AppContext,
   raw: unknown,
-): ConcordanceResult & { all?: RawHit[]; primaryLang?: string } {
+): Promise<ConcordanceResult & { all?: RawHit[]; primaryLang?: string }> {
   const started = performance.now();
   const q = parse(concordanceQuerySchema, raw);
+  // Búsqueda por lema (coreano): se analiza lo buscado con Kiwi y se busca en los morfemas.
+  const lemmas = new Map<SearchCondition, string>();
+  let notice: string | undefined;
+  for (const c of q.conditions) {
+    if (c.mode !== 'lemma') continue;
+    if (c.lang !== 'ko')
+      throw new ValidationError('La búsqueda por lema solo está disponible para el coreano.');
+    lemmas.set(c, (await queryLemma(ctx, c.query)).lemma);
+  }
+  if (lemmas.size) {
+    const st = morphStatus(ctx);
+    if (st.analyzed < st.total) {
+      kickAnalysis(ctx);
+      notice = `El análisis morfológico va por ${st.analyzed} de ${st.total} segmentos: los resultados por lema aún pueden ser incompletos.`;
+    }
+  }
+  const lemmaSegments = (lemma: string) =>
+    new Set(
+      (
+        ctx.sqlite
+          .prepare('SELECT DISTINCT segment_id AS id FROM segment_morphs WHERE lemma = ?')
+          .all(lemma) as { id: number }[]
+      ).map((r) => r.id),
+    );
   let compiled: CompiledCondition[];
   try {
     compiled = q.conditions.map(compileCondition);
@@ -76,6 +132,23 @@ export function searchCorpus(
     where.push(primary.condition.caseSensitive ? 'st.text REGEXP ?' : 'regexp_i(?, st.text)');
     params.push(primary.condition.query);
   }
+  const primaryLemma = lemmas.get(primary.condition) ?? null;
+  if (primaryLemma) {
+    from = `segment_texts st JOIN segments s ON s.id = st.segment_id ${CORPUS_JOINS}`;
+    // Sin la preselección por texto: se busca por el lema en los morfemas.
+    const drop = where.indexOf('fts.segment_texts_fts MATCH ?');
+    if (drop >= 0) {
+      where.splice(drop, 1);
+      params.splice(drop, 1);
+    }
+    const like = where.indexOf("st.text LIKE ? ESCAPE '\\'");
+    if (like >= 0) {
+      where.splice(like, 1);
+      params.pop();
+    }
+    where.push('EXISTS (SELECT 1 FROM segment_morphs m WHERE m.segment_id = s.id AND m.lemma = ?)');
+    params.push(primaryLemma);
+  }
   const sql = `SELECT s.id AS segmentId, st.text, d.id AS documentId, s.position
     FROM ${from} WHERE ${where.join(' AND ')}
     ORDER BY lower(g.title), d.created_at, s.position`;
@@ -86,7 +159,7 @@ export function searchCorpus(
     segmentId: number;
     text: string;
   }>) {
-    if (matches(row.text, primary.regex))
+    if (primaryLemma || matches(row.text, primary.regex))
       candidates.push({ segmentId: row.segmentId, text: row.text });
   }
 
@@ -97,11 +170,16 @@ export function searchCorpus(
       ctx,
       candidates.map((c) => c.segmentId),
     );
+    const lemmaSets = new Map(
+      others
+        .filter((o) => lemmas.has(o.condition))
+        .map((o) => [o, lemmaSegments(lemmas.get(o.condition)!)] as const),
+    );
     survivors = candidates.filter((c) => {
       const t = texts.get(c.segmentId) ?? {};
       return others.every((o) => {
-        const value = t[o.condition.lang] ?? '';
-        const ok = matches(value, o.regex);
+        const set = lemmaSets.get(o);
+        const ok = set ? set.has(c.segmentId) : matches(t[o.condition.lang] ?? '', o.regex);
         return o.condition.negate ? !ok : ok;
       });
     });
@@ -110,8 +188,20 @@ export function searchCorpus(
   // 3) Líneas KWIC.
   let total = 0;
   const hits: RawHit[] = [];
+  const spans = new Map<number, [number, number][]>();
+  if (primaryLemma) {
+    for (const r of ctx.sqlite
+      .prepare('SELECT segment_id AS id, start, end FROM segment_morphs WHERE lemma = ?')
+      .iterate(primaryLemma) as Iterable<{ id: number; start: number; end: number }>) {
+      const list = spans.get(r.id) ?? [];
+      list.push([r.start, r.end]);
+      spans.set(r.id, list);
+    }
+  }
   survivors.forEach((c, docOrder) => {
-    const lines = kwic(c.text, primary.regex, q.contextChars, MAX_PER_SEGMENT);
+    const lines = primaryLemma
+      ? lemmaKwic(c.text, spans.get(c.segmentId) ?? [], q.contextChars, MAX_PER_SEGMENT)
+      : kwic(c.text, primary.regex, q.contextChars, MAX_PER_SEGMENT);
     total += lines.length;
     for (const l of lines)
       if (hits.length < MAX_HITS) hits.push({ segmentId: c.segmentId, docOrder, ...l });
@@ -141,6 +231,7 @@ export function searchCorpus(
     segments: survivors.length,
     truncated: total > hits.length,
     elapsedMs: Math.round(performance.now() - started),
+    ...(notice ? { notice } : {}),
     all: hits,
     primaryLang: primary.condition.lang,
   };
@@ -191,7 +282,7 @@ function enrich(ctx: AppContext, page: RawHit[], lang: string): ConcordanceHit[]
 
 /** Exporta todas las coincidencias de una búsqueda a Excel. */
 export async function exportConcordance(ctx: AppContext, raw: ConcordanceQuery): Promise<Buffer> {
-  const result = searchCorpus(ctx, { ...raw, offset: 0, limit: 1 });
+  const result = await searchCorpus(ctx, { ...raw, offset: 0, limit: 1 });
   const all = result.all ?? [];
   const wb = new ExcelJS.Workbook();
   wb.creator = 'L10N Suite';
@@ -243,7 +334,7 @@ export async function concordanceRoutes(app: FastifyInstance) {
   const ctx = app.ctx;
 
   app.post('/api/corpus/concordance', async (req) => {
-    const { all: _all, primaryLang: _l, ...result } = searchCorpus(ctx, req.body);
+    const { all: _all, primaryLang: _l, ...result } = await searchCorpus(ctx, req.body);
     void _all;
     void _l;
     return result;

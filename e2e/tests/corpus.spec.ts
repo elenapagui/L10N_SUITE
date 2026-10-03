@@ -84,4 +84,14 @@ test('corpus: importar un Excel/CSV KO-ES, buscar, anotar y exportar', async ({
   // Estadísticas
   await openApp(page, '#/corpus?tab=estadisticas');
   await expect(page.getByTestId('corpus-kpis')).toContainText('3');
+  // El análisis morfológico del coreano se ofrece como descarga opcional.
+  await expect(page.getByTestId('morph-panel')).toContainText('Análisis morfológico del coreano');
+  await expect(page.getByTestId('morph-download')).toBeVisible();
+
+  // El modo «Lema» solo aparece para el coreano.
+  await openApp(page, '#/corpus/concordancias');
+  const mode = page.getByRole('combobox', { name: 'Modo' }).first();
+  await expect(mode.locator('option', { hasText: 'Lema (coreano)' })).toHaveCount(1);
+  await page.getByTestId('cond-lang-0').selectOption('es');
+  await expect(mode.locator('option', { hasText: 'Lema (coreano)' })).toHaveCount(0);
 });

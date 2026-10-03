@@ -9,6 +9,7 @@ import {
   type CorpusImportResult,
 } from '@l10n/shared';
 import type { AppContext } from '../../context';
+import { kickAnalysis } from '../../services/morph';
 import { NotFoundError, ValidationError } from '../../lib/errors';
 import { newId } from '../../lib/ids';
 import { readSheets, type Sheet } from '../../lib/tabular';
@@ -275,5 +276,10 @@ export async function corpusImportRoutes(app: FastifyInstance) {
     return previewCorpusFile(part.filename, await part.toBuffer());
   });
 
-  app.post('/api/corpus/import/commit', async (req) => commitCorpusImport(ctx, req.body));
+  app.post('/api/corpus/import/commit', async (req) => {
+    const result = commitCorpusImport(ctx, req.body);
+    // Si el analizador del coreano está instalado, los textos nuevos se analizan en segundo plano.
+    kickAnalysis(ctx);
+    return result;
+  });
 }

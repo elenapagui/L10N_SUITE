@@ -70,6 +70,7 @@ const engine = new EngineHost(
   {
     L10N_DATA_DIR: dataDir,
     L10N_MIGRATIONS_DIR: migrationsDir,
+    L10N_KIWI_WASM: path.join(__dirname, 'kiwi-wasm.wasm'),
     L10N_APP_VERSION: app.getVersion(),
     L10N_AUTO_BACKUP: SELFTEST ? '0' : '1',
   },
