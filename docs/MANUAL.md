@@ -64,7 +64,23 @@ Puedes abrirla desde **Ajustes → Acerca de → Abrir carpeta de datos**.
 
 ## Usar la app en otro ordenador
 
-Los datos viven en tu ordenador principal. Para llevarlos al otro:
+### Sincronización automática (recomendada)
+
+Para trabajar en dos ordenadores, uno cada vez, a través de una carpeta que ya sincronice tu servicio en la nube (OneDrive, iCloud Drive, Dropbox, Google Drive…):
+
+1. En los dos ordenadores, **Ajustes → Sincronización**: elige **la misma carpeta de la nube** y pon un nombre a cada ordenador («Sobremesa», «Portátil»).
+2. Trabaja con normalidad. **Al cerrar la app**, se deja en esa carpeta una copia de tus datos y adjuntos (en la subcarpeta «L10N Suite - sincronizacion»).
+3. **Al abrir la app en el otro ordenador**, si hay una versión más reciente y allí no hay cambios sin enviar, se carga sola. Antes se hace una copia de seguridad y un aviso te lo confirma.
+
+Más cosas que conviene saber:
+
+- **Antes de abrir la app en el otro ordenador**, espera a que el servicio en la nube termine de sincronizar. Si la copia aún no ha llegado entera, la app no la carga y te lo dice.
+- **Si has hecho cambios en los dos ordenadores**, la app te pide elegir con qué versión te quedas. La otra se guarda como copia de seguridad («Antes de sincronizar»).
+- **El icono de nube** de la barra superior indica el estado: sincronizado, cambios sin enviar, cambios del otro ordenador para cargar o conflicto. Si lo pulsas, abre los ajustes. **Enviar ahora** deja la copia sin cerrar la app.
+- **Tus datos de trabajo nunca están directamente en la nube**: se trabaja con la base de datos de tu ordenador y solo se deja allí una copia. Cada ordenador mantiene su propia carpeta de copias de seguridad.
+- **Si un ordenador tiene una versión más antigua de la app**, no cargará los datos del otro: actualízala antes.
+
+### A mano, con una copia completa
 
 1. En el principal: **Ajustes → Copias de seguridad → Exportar copia completa**. Se genera un ZIP con todos los datos y adjuntos.
 2. Pasa el ZIP al otro ordenador (memoria USB, nube…).
@@ -84,6 +100,7 @@ Lo que borras va a la **Papelera**, donde se guarda 30 días. Justo después de 
 - **Encargos (lotes):** cada parche, evento, DLC o ficha de tienda. Al crearlo:
   - al elegir el servicio (traducción, revisión, LQA…), la app busca la tarifa del cliente para ese servicio y ese par de idiomas y rellena **la unidad y la tarifa**: por ejemplo, 0,035 $/carácter. Si el cliente no tiene, usa la general de **Ajustes → Trabajo**. Debajo verás de dónde sale («Tarifa de Hangul Studio para traducción KO→ES») o un enlace para añadirla si no hay ninguna. Puedes cambiarla a mano;
   - en la ficha del encargo, si cambias el servicio o la unidad, la tarifa se actualiza sola, salvo que la hubieras puesto a mano. Si la tarifa del encargo no es la vigente, el botón **Aplicar** la pone. Los encargos ya facturados o con importe fijado a mano no se tocan;
+  - **si aparece «Sin tarifa»**, la app explica por qué: el cliente no tiene tarifa para ese servicio, la que tiene es para otro par de idiomas o por otra unidad, el proyecto no tiene cliente o hay dos clientes con el mismo nombre y la tarifa está en el otro. Debajo verás las tarifas más parecidas con el botón **Usar esta tarifa**, que también pone la unidad;
   - con **Análisis por coincidencias** introduces el recuento por bandas o lo pegas desde Excel o desde el informe del CAT; la app calcula el volumen ponderado y el importe;
   - puedes fijar el importe a mano;
   - la plantilla «Encargo estándar» crea las tareas habituales (traducir, consultas, QA con checklist, entregar, registrar para facturar) con fechas relativas a la entrega.
@@ -96,6 +113,15 @@ Lo que borras va a la **Papelera**, donde se guarda 30 días. Justo después de 
 - **Panel lateral:** al pulsar una tarea se abre el panel con estado, prioridad, fechas, estimación, repetición, proyecto, encargo, juego, etiquetas, descripción, checklist, subtareas y comentarios.
 - **Tareas que se repiten:** cada día, semana, mes, mes en el último día laborable, trimestre o año. Al completarla se crea la siguiente.
 - **Áreas y listas:** organizan las tareas que no son de un proyecto, como los espacios y listas de ClickUp. Se configuran en **Ajustes → Trabajo**, junto con los estados y las plantillas.
+
+## Revisión semanal
+
+**Revisión semanal** (en la barra lateral, debajo de Inicio) resume una semana de lunes a domingo:
+
+- **Lo que hiciste:** encargos entregados (con volumen e importe), lo facturado y cobrado, las horas por área, las tareas completadas, los cambios en tus publicaciones y envíos, las lecturas terminadas, las referencias nuevas y los segmentos añadidos al corpus.
+- **Lo que viene:** entregas, tareas con fecha, plazos académicos, cobros previstos y tareas vencidas.
+
+Por defecto muestra la semana anterior, y los lunes la app te avisa al abrirla. Con las flechas cambias de semana, y **Imprimir o PDF** la guarda.
 
 ## Tiempo y calendario
 
@@ -125,6 +151,7 @@ La app **no emite facturas**: las emites con tu programa de facturación (o tu g
   - un gráfico mensual de lo facturado y los gastos (el botón de la tabla muestra las cifras);
   - los ingresos por cliente, servicio, juego o par de idiomas;
   - la antigüedad de los cobros pendientes y los días medios de cobro de cada cliente;
+  - la **rentabilidad por cliente**: encargos entregados, volumen, tarifa media, ingresos, horas registradas, **€/hora efectivo** (solo con los encargos que tienen tiempo registrado), días medios de cobro e importe vencido. Pulsa el título de una columna para ordenar por ella. La ficha de cada cliente muestra también sus ingresos del año, su €/hora y sus días de cobro;
   - el **resumen trimestral** orientativo de los modelos 303 (IVA) y 130 (IRPF). Es una estimación: revísalo siempre con tu gestoría.
 
   **Excel para la gestoría** descarga las facturas, los gastos y los resúmenes del año o del trimestre.
@@ -190,7 +217,8 @@ En el documento puedes corregir cualquier segmento (lápiz) o eliminarlo.
 
 ### Concordancias
 
-- Escribe lo que buscas y elige el modo: **contiene** (sin distinguir mayúsculas ni tildes), **palabra completa**, **empieza por** (útil con las partículas coreanas: «마법사» encuentra «마법사가»), **comodines** (`*` y `?`) o **expresión regular**.
+- Escribe lo que buscas y elige el modo: **contiene** (sin distinguir mayúsculas ni tildes), **palabra completa**, **empieza por** (útil con las partículas coreanas: «마법사» encuentra «마법사가»), **comodines** (`*` y `?`), **expresión regular** o, en coreano, **lema**.
+- **Lema (coreano):** encuentra todas las formas de una palabra gracias al análisis morfológico. Por ejemplo, «먹다» (o «먹었어요») encuentra 먹었다, 먹고, 먹는…, y «마법사» encuentra 마법사가, 마법사를, 마법사의… e incluso compuestos como 흑마법사. Se resalta la palabra entera. Necesita el analizador (ver **Estadísticas**).
 - **Condiciones combinadas:** añade condiciones en otros idiomas y marca «Excluir» para descartar segmentos. Por ejemplo: coreano contiene «스킬» y, excluyendo, español contiene «habilidad».
 - **Filtros:** juego, género, plataforma, año, tipo de texto, dirección de traducción, hablante y etiquetas de anotación.
 - Los resultados se muestran en formato KWIC con la traducción debajo. Ordénalos por el contexto izquierdo o derecho, pulsa una línea para ver el segmento completo, anotar la coincidencia o abrirla en su documento, y exporta todas las coincidencias a Excel. Las búsquedas se pueden guardar.
@@ -204,6 +232,13 @@ En el documento puedes corregir cualquier segmento (lápiz) o eliminarlo.
 ### Estadísticas
 
 Número de juegos, documentos, segmentos y anotaciones; por idioma, caracteres (sin espacios), **eojeol** en coreano y palabras en el resto, formas distintas y media por segmento; distribución por tipo de texto, género, plataforma, año, fase y dirección; y **lista de frecuencias** (con o sin palabras vacías) exportable a CSV. Todo se puede calcular sobre un subcorpus filtrado.
+
+**Análisis morfológico del coreano.** Arriba, en Estadísticas, puedes descargar el analizador libre **Kiwi** (unos 90 MB, una sola vez; después funciona sin conexión). Analiza en segundo plano todos los textos coreanos, separando partículas y terminaciones (마법사 + 가, 먹 + 었 + 다), y lo vuelve a hacer con los textos que importes o corrijas. Con él:
+
+- el concordanciador permite buscar por **lema**;
+- la lista de frecuencias del coreano puede contar **lemas** con su categoría (sustantivo, verbo, adjetivo, partícula…), con la opción de quitar partículas y terminaciones.
+
+Kiwi acierta en la gran mayoría de los casos, pero puede dividir de forma inesperada algunos préstamos y nombres propios poco frecuentes.
 
 ### Exportar y versiones
 

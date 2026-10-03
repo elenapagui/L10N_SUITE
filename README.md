@@ -8,14 +8,15 @@ Aplicación de escritorio para dirigir la actividad profesional de traducción d
 
 ## Estado
 
-| Fase | Contenido                                            | Estado        |
-| ---- | ---------------------------------------------------- | ------------- |
-| 0    | Base técnica, app de escritorio, copias de seguridad | ✅ Disponible |
-| 1    | Proyectos y tareas                                   | ✅ Disponible |
-| 2    | Finanzas                                             | ✅ Disponible |
-| 3    | Páginas y tablas                                     | ✅ Disponible |
-| 4    | Corpus                                               | ✅ Disponible |
-| 5    | Académico                                            | ✅ Disponible |
+| Fase | Contenido                                                                       | Estado        |
+| ---- | ------------------------------------------------------------------------------- | ------------- |
+| 0    | Base técnica, app de escritorio, copias de seguridad                            | ✅ Disponible |
+| 1    | Proyectos y tareas                                                              | ✅ Disponible |
+| 2    | Finanzas                                                                        | ✅ Disponible |
+| 3    | Páginas y tablas                                                                | ✅ Disponible |
+| 4    | Corpus                                                                          | ✅ Disponible |
+| 5    | Académico                                                                       | ✅ Disponible |
+| 6    | Extras (sincronización, revisión semanal, rentabilidad, morfología del coreano) | ✅ Disponible |
 
 ## Descargar
 
