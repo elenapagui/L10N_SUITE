@@ -50,6 +50,7 @@ const WORK_KEYS = [
   'expenses',
   'finance-overview',
   'finance-forecast',
+  'finance-clients',
   'finance-quarter',
   'pages',
   'backlinks',

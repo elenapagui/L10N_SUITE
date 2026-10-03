@@ -86,6 +86,7 @@ test('gastos e informes', async ({ page, request }) => {
   await page.getByTestId('monthly-chart').getByRole('button', { name: 'Ver como tabla' }).click();
   await expect(page.getByTestId('monthly-chart').getByRole('table')).toBeVisible();
   await expect(page.getByTestId('model-303')).toBeVisible();
+  await expect(page.getByTestId('profitability')).toContainText('Rentabilidad por cliente');
 
   // Previsión de cobros: un encargo entregado y sin facturar aparece como partida.
   const client = await (

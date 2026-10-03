@@ -1,5 +1,13 @@
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
-import type { Client, Forecast, Invoice, Job, Project, Rate } from '@l10n/shared';
+import type {
+  Client,
+  ClientProfitabilityReport,
+  Forecast,
+  Invoice,
+  Job,
+  Project,
+  Rate,
+} from '@l10n/shared';
 import { createTestApp, type TestApp } from './helpers';
 
 let t: TestApp;
@@ -262,5 +270,50 @@ describe('previsión de cobros', () => {
       baseCents: 28_620,
     });
     expect(withFx.totalCents).toBe(37_100 + 28_620);
+  });
+});
+
+describe('rentabilidad por cliente', () => {
+  it('calcula ingresos, horas, €/hora, tarifa por unidad y días de cobro', async () => {
+    const client = await req<Client>('POST', '/api/clients', { name: 'Cliente rentable' });
+    const project = await req<Project>('POST', '/api/projects', {
+      name: 'Proyecto',
+      clientId: client.id,
+    });
+    const job = await req<Job>(
+      'POST',
+      '/api/jobs',
+      { projectId: project.id, title: 'Lote', unit: 'char', volume: 10_000, rateMicros: 30_000 },
+      201,
+    );
+    await req('PATCH', `/api/jobs/${job.id}`, { status: 'delivered', deliveredAt: '2026-09-10' });
+    await req(
+      'POST',
+      '/api/time-entries',
+      { jobId: job.id, startedAt: '2026-09-08T08:00:00Z', endedAt: '2026-09-08T14:00:00Z' },
+      201,
+    );
+    const inv = await req<Invoice>(
+      'POST',
+      '/api/invoices',
+      { number: 'R-1', clientId: client.id, issueDate: '2026-09-11', jobIds: [job.id] },
+      201,
+    );
+    await req('POST', `/api/invoices/${inv.id}/pay`, { paidAt: '2026-10-01' });
+
+    const report = await req<ClientProfitabilityReport>('GET', '/api/reports/clients?year=2026');
+    expect(report.clients).toHaveLength(1);
+    expect(report.clients[0]).toMatchObject({
+      clientName: 'Cliente rentable',
+      jobCount: 1,
+      incomeCents: 30_000,
+      invoicedCents: 30_000,
+      hours: 6,
+      // 300 € en 6 horas.
+      hourlyCents: 5_000,
+      avgPaymentDays: 20,
+      overdueCents: 0,
+      units: [{ unit: 'char', volume: 10_000, cents: 30_000 }],
+    });
   });
 });

@@ -7,6 +7,7 @@ import {
   CURRENCIES,
   DEFAULT_CAT_GRID,
   formatMoney,
+  formatNumber,
   type Client,
   type Contact,
 } from '@l10n/shared';
@@ -25,6 +26,7 @@ import { useTrashWithUndo } from '@/hooks/mutations';
 import { api } from '@/lib/api';
 import { RatesTable } from './RatesTable';
 import { ProjectsTable, NewProjectDialog } from './ProjectsPage';
+import { useClientProfitability } from '@/features/finance/ProfitabilityPanel';
 import { BackLink, FieldGrid, Section, Stat, usePatch } from './shared';
 
 function ContactsPanel({ clientId, contacts }: { clientId: string; contacts: Contact[] }) {
@@ -154,6 +156,8 @@ export function ClientDetailPage() {
   const patch = usePatch<Client>(`/clients/${clientId}`);
   const trash = useTrashWithUndo();
   const [newProject, setNewProject] = useState(false);
+  const year = new Date().getFullYear();
+  const profitability = useClientProfitability(year);
 
   if (q.isLoading)
     return (
@@ -168,6 +172,8 @@ export function ClientDetailPage() {
       </Page>
     );
   const { client, contacts, rates } = q.data;
+  const profit = profitability.data?.clients.find((c) => c.clientId === client.id);
+  const baseMoney = (c: number) => formatMoney(c, profitability.data?.baseCurrency ?? 'EUR');
   const save = (p: Partial<Client>) => patch.mutate(p);
 
   return (
@@ -206,13 +212,42 @@ export function ClientDetailPage() {
       <div className="mb-5 flex flex-wrap gap-2">
         <TagPicker entityType="client" entityId={client.id} />
       </div>
-      <div className="mb-6 grid gap-3 sm:grid-cols-3">
+      <div className="mb-6 grid gap-3 sm:grid-cols-3 xl:grid-cols-6">
         <Stat label="Proyectos" value={client.projectCount} />
         <Stat label="Encargos abiertos" value={client.openJobCount} />
         <Stat
           label="Pendiente de facturar"
           value={formatMoney(client.pendingBillingCents, client.currency)}
           tone={client.pendingBillingCents > 0 ? 'warning' : undefined}
+        />
+        <Stat
+          label={`Ingresos ${year}`}
+          value={profit ? baseMoney(profit.incomeCents) : '—'}
+          hint={
+            profit
+              ? `${profit.jobCount} ${profit.jobCount === 1 ? 'encargo entregado' : 'encargos entregados'}`
+              : undefined
+          }
+        />
+        <Stat
+          label="€/hora efectivo"
+          value={profit?.hourlyCents != null ? baseMoney(profit.hourlyCents) : '—'}
+          hint={
+            profit?.hours
+              ? `${formatNumber(profit.hours, 1)} h registradas`
+              : 'Sin tiempo registrado'
+          }
+        />
+        <Stat
+          label="Días medios de cobro"
+          value={profit?.avgPaymentDays != null ? `${profit.avgPaymentDays} d` : '—'}
+          hint={
+            profit?.overdueCents
+              ? `${baseMoney(profit.overdueCents)} vencidos`
+              : client.paymentTermsDays != null
+                ? `Plazo pactado: ${client.paymentTermsDays} d`
+                : undefined
+          }
         />
       </div>
       <Tabs defaultValue={tab ?? 'resumen'}>

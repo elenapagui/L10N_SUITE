@@ -175,6 +175,36 @@ export interface BreakdownRow {
   count: number;
 }
 
+/** Rentabilidad de un cliente en un año. Importes en la moneda principal (base, sin IVA). */
+export interface ClientProfitability {
+  clientId: string;
+  clientName: string;
+  /** Encargos entregados en el año. */
+  jobCount: number;
+  /** Volumen y facturación por unidad (palabra, carácter, hora…). */
+  units: { unit: string; volume: number; cents: number }[];
+  /** Importe de los encargos entregados en el año. */
+  incomeCents: number;
+  /** Base de las facturas emitidas en el año. */
+  invoicedCents: number;
+  /** Horas registradas en el año en sus encargos, proyectos y tareas. */
+  hours: number;
+  /** € por hora con los encargos que tienen tiempo registrado (null si no hay). */
+  hourlyCents: number | null;
+  /** Días medios entre la emisión y el cobro de sus facturas del año. */
+  avgPaymentDays: number | null;
+  /** Facturas vencidas sin cobrar (hoy). */
+  overdueCents: number;
+}
+
+export interface ClientProfitabilityReport {
+  year: number;
+  baseCurrency: string;
+  clients: ClientProfitability[];
+  /** Encargos en otra moneda sin tipo de cambio conocido (no se suman). */
+  unconverted: number;
+}
+
 /** Una partida de la previsión de cobros: una factura emitida o un encargo sin facturar. */
 export interface ForecastItem {
   kind: 'invoice' | 'job';

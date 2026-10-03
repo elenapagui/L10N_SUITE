@@ -15,7 +15,10 @@ import {
   invoiceTotals,
   type BreakdownRow,
   type FinanceOverview,
+  type ClientProfitabilityReport,
+  type ClientProfitability,
   type Forecast,
+  type Invoice,
   type ForecastItem,
   type QuarterReport,
 } from '@l10n/shared';
@@ -380,6 +383,144 @@ export async function accountingWorkbook(
   return { buffer: Buffer.from(await wb.xlsx.writeBuffer()), name };
 }
 
+/**
+ * Tipo de cambio de cada moneda a la principal: el de la factura más reciente en esa moneda o,
+ * con prioridad, el aproximado de Ajustes (lo ha fijado la usuaria para las estimaciones).
+ */
+function currencyRates(ctx: AppContext, invoices: Invoice[]): Map<string, number> {
+  const prefs = getSettings(ctx).preferences;
+  const fx = new Map<string, number>([[prefs.baseCurrency, 1]]);
+  for (const i of [...invoices].sort((a, b) => a.issueDate.localeCompare(b.issueDate)))
+    if (i.exchangeRate) fx.set(i.currency, i.exchangeRate);
+  for (const [cur, rate] of Object.entries(prefs.fxRates ?? {}))
+    if (cur !== prefs.baseCurrency) fx.set(cur, rate);
+  return fx;
+}
+
+/** Rentabilidad por cliente en un año: volumen, ingresos, horas, €/hora y cobro. */
+export function clientProfitability(ctx: AppContext, year: number): ClientProfitabilityReport {
+  const baseCurrency = getSettings(ctx).preferences.baseCurrency;
+  const y = String(year);
+  const today = todayISO(ctx.now());
+  const invoices = listInvoices(ctx).filter((i) => i.status !== 'cancelled');
+  const fx = currencyRates(ctx, invoices);
+  const clients = listClients(ctx, { includeInactive: true });
+  const rows = new Map<string, ClientProfitability>(
+    clients.map((c) => [
+      c.id,
+      {
+        clientId: c.id,
+        clientName: c.name,
+        jobCount: 0,
+        units: [],
+        incomeCents: 0,
+        invoicedCents: 0,
+        hours: 0,
+        hourlyCents: null,
+        avgPaymentDays: null,
+        overdueCents: 0,
+      },
+    ]),
+  );
+  const SECS = `(julianday(te.ended_at) - julianday(te.started_at)) * 86400`;
+  // Segundos por encargo (directos o a través de una tarea del encargo).
+  const jobSecs = new Map(
+    (
+      ctx.sqlite
+        .prepare(
+          `SELECT COALESCE(te.job_id, t.job_id) AS jobId, SUM(${SECS}) AS secs FROM time_entries te
+           LEFT JOIN tasks t ON t.id = te.task_id
+           WHERE te.deleted_at IS NULL AND te.ended_at IS NOT NULL AND COALESCE(te.job_id, t.job_id) IS NOT NULL
+           GROUP BY 1`,
+        )
+        .all() as { jobId: string; secs: number }[]
+    ).map((r) => [r.jobId, r.secs]),
+  );
+  let unconverted = 0;
+  const hourly = new Map<string, { cents: number; secs: number }>();
+  const jobs = ctx.sqlite
+    .prepare(
+      `SELECT j.id, j.unit, COALESCE(j.weighted_volume, j.volume) AS volume, j.amount_cents AS cents,
+              j.currency, i.exchange_rate AS invoiceRate, p.client_id AS clientId
+       FROM jobs j JOIN projects p ON p.id = j.project_id LEFT JOIN invoices i ON i.id = j.invoice_id
+       WHERE j.deleted_at IS NULL AND p.deleted_at IS NULL AND p.client_id IS NOT NULL
+         AND j.status != 'cancelled' AND substr(COALESCE(j.delivered_at, ''), 1, 4) = ?`,
+    )
+    .all(y) as {
+    id: string;
+    unit: string;
+    volume: number | null;
+    cents: number | null;
+    currency: string;
+    invoiceRate: number | null;
+    clientId: string;
+  }[];
+  for (const j of jobs) {
+    const row = rows.get(j.clientId);
+    if (!row) continue;
+    row.jobCount++;
+    const rate = j.invoiceRate ?? fx.get(j.currency);
+    if (rate == null) {
+      unconverted++;
+      continue;
+    }
+    const cents = toBase(j.cents ?? 0, rate);
+    row.incomeCents += cents;
+    const u = row.units.find((x) => x.unit === j.unit) ?? { unit: j.unit, volume: 0, cents: 0 };
+    if (!row.units.includes(u)) row.units.push(u);
+    u.volume += j.volume ?? 0;
+    u.cents += cents;
+    const secs = jobSecs.get(j.id);
+    if (secs && secs > 0) {
+      const h = hourly.get(j.clientId) ?? { cents: 0, secs: 0 };
+      h.cents += cents;
+      h.secs += secs;
+      hourly.set(j.clientId, h);
+    }
+  }
+  for (const [clientId, h] of hourly)
+    rows.get(clientId)!.hourlyCents = Math.round((h.cents / h.secs) * 3600);
+  // Todas las horas del año del cliente: encargos, proyectos y tareas.
+  const hours = ctx.sqlite
+    .prepare(
+      `SELECT COALESCE(pj.client_id, pp.client_id, ptj.client_id, ptp.client_id) AS clientId,
+              SUM(${SECS}) AS secs
+       FROM time_entries te
+       LEFT JOIN jobs j ON j.id = te.job_id LEFT JOIN projects pj ON pj.id = j.project_id
+       LEFT JOIN projects pp ON pp.id = te.project_id
+       LEFT JOIN tasks t ON t.id = te.task_id
+       LEFT JOIN jobs tj ON tj.id = t.job_id LEFT JOIN projects ptj ON ptj.id = tj.project_id
+       LEFT JOIN projects ptp ON ptp.id = t.project_id
+       WHERE te.deleted_at IS NULL AND te.ended_at IS NOT NULL AND substr(te.started_at, 1, 4) = ?
+       GROUP BY 1`,
+    )
+    .all(y) as { clientId: string | null; secs: number }[];
+  for (const h of hours)
+    if (h.clientId && rows.has(h.clientId)) rows.get(h.clientId)!.hours = h.secs / 3600;
+  const pay = new Map<string, { days: number; n: number }>();
+  for (const inv of invoices) {
+    const row = inv.clientId ? rows.get(inv.clientId) : undefined;
+    if (!row) continue;
+    if (inv.issueDate.startsWith(y)) {
+      row.invoicedCents += toBase(inv.baseCents, inv.exchangeRate);
+      if (inv.status === 'paid' && inv.paidAt) {
+        const p = pay.get(row.clientId) ?? { days: 0, n: 0 };
+        p.days += diffDaysISO(inv.issueDate, inv.paidAt);
+        p.n++;
+        pay.set(row.clientId, p);
+      }
+    }
+    if (inv.status === 'issued' && inv.dueDate && inv.dueDate < today)
+      row.overdueCents += toBase(inv.totalCents, inv.exchangeRate);
+  }
+  for (const [clientId, p] of pay) rows.get(clientId)!.avgPaymentDays = Math.round(p.days / p.n);
+  const list = [...rows.values()]
+    .filter((r) => r.jobCount || r.invoicedCents || r.hours || r.overdueCents)
+    .sort((a, b) => b.incomeCents - a.incomeCents);
+  for (const r of list) r.units.sort((a, b) => b.cents - a.cents);
+  return { year, baseCurrency, clients: list, unconverted };
+}
+
 /** Último día del mes de una fecha ISO. */
 function endOfMonthISO(date: string): string {
   const [y, m] = date.split('-').map(Number) as [number, number];
@@ -398,13 +539,7 @@ export function cashForecast(ctx: AppContext, horizonMonths = 6): Forecast {
   const today = todayISO(ctx.now());
   const clients = new Map(listClients(ctx, { includeInactive: true }).map((c) => [c.id, c]));
   const invoices = listInvoices(ctx).filter((i) => i.status !== 'cancelled');
-  // Tipo de cambio de cada moneda: el de la factura más reciente en esa moneda.
-  const fx = new Map<string, number>([[baseCurrency, 1]]);
-  for (const i of [...invoices].sort((a, b) => a.issueDate.localeCompare(b.issueDate)))
-    if (i.exchangeRate) fx.set(i.currency, i.exchangeRate);
-  // Los tipos aproximados de Ajustes tienen prioridad: los ha fijado la usuaria para esto.
-  for (const [cur, rate] of Object.entries(prefs.fxRates ?? {}))
-    if (cur !== baseCurrency) fx.set(cur, rate);
+  const fx = currencyRates(ctx, invoices);
 
   const items: ForecastItem[] = [];
   for (const inv of invoices) {
@@ -517,6 +652,11 @@ export async function reportRoutes(app: FastifyInstance) {
   app.get('/api/reports/overview', async (req) => {
     const q = parse(z.object({ year: yearSchema.optional() }), req.query);
     return financeOverview(ctx, q.year ?? Number(todayISO(ctx.now()).slice(0, 4)));
+  });
+
+  app.get('/api/reports/clients', async (req) => {
+    const q = parse(z.object({ year: yearSchema.optional() }), req.query);
+    return clientProfitability(ctx, q.year ?? Number(todayISO(ctx.now()).slice(0, 4)));
   });
 
   app.get('/api/reports/forecast', async (req) => {

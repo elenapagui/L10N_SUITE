@@ -12,6 +12,7 @@ import { apiUrl } from '@/lib/api';
 import { Stat } from '@/features/work/shared';
 import { ChartFrame, GroupedBarChart, HBarList, Legend, type ChartSeries } from './charts';
 import { ForecastPanel } from './ForecastPanel';
+import { ProfitabilityPanel } from './ProfitabilityPanel';
 import { useOverview, useQuarter } from './hooks';
 
 const MONTHS = ['ene', 'feb', 'mar', 'abr', 'may', 'jun', 'jul', 'ago', 'sep', 'oct', 'nov', 'dic'];
@@ -329,6 +330,8 @@ export function ReportsPage() {
               />
             </ChartFrame>
           </div>
+
+          <ProfitabilityPanel year={year} />
 
           <div className="grid gap-4 lg:grid-cols-[1fr_2fr]">
             <section className="rounded-lg border bg-card p-4">
