@@ -72,7 +72,7 @@ test('ficha: se puede escribir la autoría y el borrador sobrevive a la valoraci
   // Valorar la referencia no borra lo que se está escribiendo en la ficha.
   await page.getByRole('tab', { name: 'Lectura y citas' }).click();
   await page.getByRole('button', { name: '4 estrellas' }).click();
-  await expect(page.getByLabel('Valoración: 4 de 5')).toBeVisible();
+  await expect(page.getByRole('dialog').getByLabel('Valoración: 4 de 5')).toBeVisible();
   await page.getByRole('tab', { name: 'Ficha' }).click();
   await expect(page.getByTestId('ref-authors')).toHaveValue(
     'Bernal-Merino, Miguel Ángel\nKim, Ji-hye',

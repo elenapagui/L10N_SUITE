@@ -64,7 +64,8 @@ export function DecimalInput({
         onChange={(e) => setText(e.target.value)}
         onBlur={commit}
         onKeyDown={(e) => {
-          if (e.key === 'Enter') (e.target as HTMLInputElement).blur();
+          if (e.key === 'Enter' && !e.nativeEvent.isComposing)
+            (e.target as HTMLInputElement).blur();
         }}
         className={cn('text-right tabular-nums', suffix && 'pr-12')}
         data-testid={testId}
@@ -126,7 +127,53 @@ export function CommitInput({
       onChange={(e) => setText(e.target.value)}
       onBlur={commit}
       onKeyDown={(e) => {
-        if (e.key === 'Enter') (e.target as HTMLInputElement).blur();
+        if (e.key === 'Enter' && !e.nativeEvent.isComposing) (e.target as HTMLInputElement).blur();
+      }}
+      className={className}
+      data-testid={testId}
+    />
+  );
+}
+
+/** Año razonable: al teclear una fecha, el navegador pasa por años como 0002 o 0202. */
+const COMPLETE_DATE = /^(19|20)\d{2}-\d{2}-\d{2}$/;
+
+/**
+ * Fecha que se guarda al elegirla en el calendario o al terminar de escribirla, nunca con un año
+ * a medias. Vaciar el campo la borra.
+ */
+export function DateInput({
+  value,
+  onCommit,
+  className,
+  id,
+  testId,
+}: {
+  value: string | null | undefined;
+  onCommit: (value: string | null) => void;
+  className?: string;
+  id?: string;
+  testId?: string;
+}) {
+  const [text, setText] = useState(value ?? '');
+  useEffect(() => setText(value ?? ''), [value]);
+  const commit = (v: string) => {
+    const next = v === '' ? null : v;
+    if (next === (value ?? null)) return;
+    if (next === null || COMPLETE_DATE.test(next)) onCommit(next);
+  };
+  return (
+    <Input
+      id={id}
+      type="date"
+      value={text}
+      onChange={(e) => {
+        setText(e.target.value);
+        commit(e.target.value);
+      }}
+      // Si se deja a medias o con un año imposible, vuelve a la fecha guardada.
+      onBlur={() => {
+        if (text !== '' && !COMPLETE_DATE.test(text)) setText(value ?? '');
       }}
       className={className}
       data-testid={testId}

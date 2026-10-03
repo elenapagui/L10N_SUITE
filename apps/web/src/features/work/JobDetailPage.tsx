@@ -34,7 +34,7 @@ import { Field } from '@/components/ui/label';
 import { Input, NativeSelect, Textarea } from '@/components/ui/input';
 import { Spinner, Switch } from '@/components/ui/misc';
 import { AttachmentsPanel } from '@/components/common/AttachmentsPanel';
-import { CommitInput, DecimalInput } from '@/components/common/inputs';
+import { CommitInput, DecimalInput, DateInput } from '@/components/common/inputs';
 import { TagPicker } from '@/components/common/TagPicker';
 import { Page, PageHeader } from '@/components/layout/PageHeader';
 import { useClient, useJob, useTimer } from '@/hooks/work';
@@ -314,7 +314,7 @@ export function JobDetailPage() {
   const navigate = useNavigate();
   const q = useJob(jobId);
   const client = useClient(q.data?.clientId ?? '');
-  const patch = usePatch<Job>(`/jobs/${jobId}`);
+  const patch = usePatch<Job>(`/jobs/${jobId}`, ['job', jobId]);
   const trash = useTrashWithUndo();
   const timer = useTimer();
   const controls = useTimerControls();
@@ -478,19 +478,11 @@ export function JobDetailPage() {
                 <CommitInput value={job.poNumber} onCommit={(v) => save({ poNumber: v })} />
               </Field>
               <Field label="Recibido">
-                <Input
-                  type="date"
-                  value={job.receivedAt ?? ''}
-                  onChange={(e) => save({ receivedAt: e.target.value || null })}
-                />
+                <DateInput value={job.receivedAt} onCommit={(v) => save({ receivedAt: v })} />
               </Field>
               <div className="grid grid-cols-[1fr_auto] gap-2">
                 <Field label="Entrega">
-                  <Input
-                    type="date"
-                    value={job.dueDate ?? ''}
-                    onChange={(e) => save({ dueDate: e.target.value || null })}
-                  />
+                  <DateInput value={job.dueDate} onCommit={(v) => save({ dueDate: v })} />
                 </Field>
                 <Field label="Hora">
                   <Input
@@ -502,11 +494,7 @@ export function JobDetailPage() {
                 </Field>
               </div>
               <Field label="Entregado">
-                <Input
-                  type="date"
-                  value={job.deliveredAt ?? ''}
-                  onChange={(e) => save({ deliveredAt: e.target.value || null })}
-                />
+                <DateInput value={job.deliveredAt} onCommit={(v) => save({ deliveredAt: v })} />
               </Field>
             </FieldGrid>
           </Section>

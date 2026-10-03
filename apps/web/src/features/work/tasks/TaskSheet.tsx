@@ -8,7 +8,7 @@ import { Sheet } from '@/components/ui/sheet';
 import { ChecklistEditor } from '@/components/common/ChecklistEditor';
 import { CommentsPanel } from '@/components/common/CommentsPanel';
 import { EntitySelect } from '@/components/common/EntitySelect';
-import { CommitInput, DecimalInput } from '@/components/common/inputs';
+import { CommitInput, DecimalInput, DateInput } from '@/components/common/inputs';
 import { TagPicker } from '@/components/common/TagPicker';
 import { useTrashWithUndo } from '@/hooks/mutations';
 import {
@@ -141,11 +141,10 @@ function TaskEditor({ task, onOpenTask }: { task: Task; onOpenTask: (id: string)
           </NativeSelect>
         </Field>
         <Field label="Fecha límite">
-          <Input
-            type="date"
-            value={task.dueDate ?? ''}
-            onChange={(e) => save.mutate({ dueDate: e.target.value || null })}
-            data-testid="task-due"
+          <DateInput
+            value={task.dueDate}
+            onCommit={(v) => save.mutate({ dueDate: v })}
+            testId="task-due"
           />
         </Field>
         <Field label="Hora">

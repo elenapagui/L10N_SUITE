@@ -1,4 +1,4 @@
-import { useQuery } from '@tanstack/react-query';
+import { useQuery, keepPreviousData } from '@tanstack/react-query';
 import type {
   AnnotationTag,
   CorpusDocument,
@@ -64,6 +64,9 @@ export const useCorpusStats = (filters: CorpusFilters) =>
   useQuery({
     queryKey: ['corpus-stats', filters],
     queryFn: () => api<CorpusStats>('/corpus/stats', { query: { filters: filtersParam(filters) } }),
+    // Al cambiar los filtros se siguen mostrando los datos anteriores: así no se desmonta la
+    // lista de frecuencias (y no pierde el idioma ni la unidad elegidos).
+    placeholderData: keepPreviousData,
   });
 
 export const useFrequencies = (
@@ -73,6 +76,7 @@ export const useFrequencies = (
 ) =>
   useQuery({
     queryKey: ['corpus-frequencies', lang, filters, opts],
+    placeholderData: keepPreviousData,
     queryFn: () =>
       api<{ rows: FrequencyRow[]; tokens: number; types: number }>('/corpus/frequencies', {
         query: { lang, filters: filtersParam(filters), ...opts },

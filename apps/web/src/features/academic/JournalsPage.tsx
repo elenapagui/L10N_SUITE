@@ -1,4 +1,5 @@
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
+import { useSearch } from '@tanstack/react-router';
 import { useQueryClient } from '@tanstack/react-query';
 import { ExternalLink, Newspaper, Plus, Trash2 } from 'lucide-react';
 import { toast } from 'sonner';
@@ -261,6 +262,17 @@ function JournalDialog({
 export function JournalsPage() {
   const journals = useJournals();
   const [editing, setEditing] = useState<Journal | 'new' | null>(null);
+  // Desde la búsqueda global (?revista=id) se abre la ficha de esa revista.
+  const search = useSearch({ strict: false }) as { revista?: string };
+  const opened = useRef<string | null>(null);
+  useEffect(() => {
+    if (!search.revista || opened.current === search.revista) return;
+    const j = journals.data?.find((x) => x.id === search.revista);
+    if (j) {
+      opened.current = search.revista;
+      setEditing(j);
+    }
+  }, [search.revista, journals.data]);
   const columns = useMemo<ColumnDef<Journal, unknown>[]>(
     () => [
       {

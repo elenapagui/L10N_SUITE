@@ -255,7 +255,18 @@ export function LibraryPage() {
   const open = (id: string | null) =>
     void navigate({ to: '/academico/biblioteca', search: id ? { ref: id } : {}, replace: true });
 
+  // Solo cuentan las seleccionadas que siguen visibles: al buscar o filtrar, las ocultas se
+  // quitan de la selección (si no, «Exportar» o «A una colección» actuarían sobre ellas).
   const selectedRefs = list.filter((r) => selected.has(r.id));
+  useEffect(() => {
+    if (refs.isFetching) return;
+    setSelected((s) => {
+      const visible = new Set(list.filter((r) => s.has(r.id)).map((r) => r.id));
+      return visible.size === s.size ? s : visible;
+    });
+  }, [list, refs.isFetching]);
+  const nSelected = selectedRefs.length;
+  const seleccionadas = (n: number) => `${n} ${n === 1 ? 'seleccionada' : 'seleccionadas'}`;
   const target = selectedRefs.length ? selectedRefs : list;
   const exportUrl = (format: string) =>
     apiUrl('/references/export', { format, ids: target.map((r) => r.id).join(',') });
@@ -411,10 +422,10 @@ export function LibraryPage() {
           </div>
           <span className="text-sm text-muted-foreground">
             {scopeLabel}: {list.length}
-            {selected.size > 0 && ` · ${selected.size} seleccionadas`}
+            {nSelected > 0 && ` · ${seleccionadas(nSelected)}`}
           </span>
           <div className="ml-auto flex gap-2">
-            {selected.size > 0 && (collections.data ?? []).length > 0 && (
+            {nSelected > 0 && (collections.data ?? []).length > 0 && (
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
                   <Button variant="outline" size="sm">
@@ -428,7 +439,7 @@ export function LibraryPage() {
                       onSelect={async () => {
                         await api(`/reference-collections/${c.id}/items`, {
                           method: 'POST',
-                          body: { add: [...selected] },
+                          body: { add: selectedRefs.map((r) => r.id) },
                         });
                         toast.success(`Añadidas a «${c.name}»`);
                         await refresh();
@@ -449,7 +460,11 @@ export function LibraryPage() {
                 void copyRich(
                   sorted.map((r) => `<p>${apaHtml(r.csl)}</p>`).join(''),
                   sorted.map((r) => apaText(r.csl)).join('\n\n'),
-                ).then(() => toast.success(`${sorted.length} referencias copiadas en APA 7`));
+                ).then(() =>
+                  toast.success(
+                    `${sorted.length} ${sorted.length === 1 ? 'referencia copiada' : 'referencias copiadas'} en APA 7`,
+                  ),
+                );
               }}
             >
               <Copy /> Copiar en APA
@@ -462,9 +477,11 @@ export function LibraryPage() {
               </DropdownMenuTrigger>
               <DropdownMenuContent align="end">
                 <DropdownMenuLabel>
-                  {selected.size
-                    ? `${selected.size} seleccionadas`
-                    : `Las ${target.length} de la lista`}
+                  {nSelected
+                    ? seleccionadas(nSelected)
+                    : target.length === 1
+                      ? 'La única de la lista'
+                      : `Las ${target.length} de la lista`}
                 </DropdownMenuLabel>
                 <DropdownMenuItem asChild>
                   <a href={exportUrl('bibtex')}>BibTeX (.bib)</a>

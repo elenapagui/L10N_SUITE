@@ -13,12 +13,12 @@ import {
 import { Button } from '@/components/ui/button';
 import { useConfirm } from '@/components/ui/confirm';
 import { Field } from '@/components/ui/label';
-import { Input, NativeSelect } from '@/components/ui/input';
+import { NativeSelect } from '@/components/ui/input';
 import { Spinner } from '@/components/ui/misc';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { AttachmentsPanel } from '@/components/common/AttachmentsPanel';
 import { EntitySelect } from '@/components/common/EntitySelect';
-import { CommitInput } from '@/components/common/inputs';
+import { CommitInput, DateInput } from '@/components/common/inputs';
 import { TagPicker } from '@/components/common/TagPicker';
 import { Page, PageHeader } from '@/components/layout/PageHeader';
 import { useTrashWithUndo } from '@/hooks/mutations';
@@ -57,7 +57,7 @@ export function ProjectDetailPage() {
   const clients = useClients();
   const games = useGames();
   const client = useClient(q.data?.clientId ?? '');
-  const patch = usePatch<Project>(`/projects/${projectId}`);
+  const patch = usePatch<Project>(`/projects/${projectId}`, ['project', projectId]);
   const trash = useTrashWithUndo();
   const timer = useTimer();
   const controls = useTimerControls();
@@ -312,18 +312,10 @@ export function ProjectDetailPage() {
                 </NativeSelect>
               </Field>
               <Field label="Inicio">
-                <Input
-                  type="date"
-                  value={p.startDate ?? ''}
-                  onChange={(e) => save({ startDate: e.target.value || null })}
-                />
+                <DateInput value={p.startDate} onCommit={(v) => save({ startDate: v })} />
               </Field>
               <Field label="Fin">
-                <Input
-                  type="date"
-                  value={p.endDate ?? ''}
-                  onChange={(e) => save({ endDate: e.target.value || null })}
-                />
+                <DateInput value={p.endDate} onCommit={(v) => save({ endDate: v })} />
               </Field>
               <Field label="Color">
                 <input

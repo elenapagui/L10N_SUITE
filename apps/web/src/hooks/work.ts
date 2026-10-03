@@ -85,12 +85,19 @@ export function useInvalidateWork() {
 /** Mutación genérica contra la API que refresca los datos de trabajo al terminar. */
 export function useApiMutation<TVars, TResult = unknown>(
   fn: (vars: TVars) => Promise<TResult>,
-  options: { onSuccess?: (result: TResult, vars: TVars) => void; extraKeys?: QueryKey[] } = {},
+  options: {
+    onSuccess?: (result: TResult, vars: TVars) => void;
+    extraKeys?: QueryKey[];
+    /** Cambio optimista en la caché antes de enviar (se deshace recargando si falla). */
+    onMutate?: (vars: TVars) => Promise<void> | void;
+  } = {},
 ) {
   const invalidate = useInvalidateWork();
   const qc = useQueryClient();
   return useMutation({
     mutationFn: fn,
+    onMutate: options.onMutate,
+    onError: options.onMutate ? () => void invalidate() : undefined,
     onSuccess: async (result, vars) => {
       await invalidate();
       for (const k of options.extraKeys ?? []) await qc.invalidateQueries({ queryKey: k });

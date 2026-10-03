@@ -239,7 +239,11 @@ export function TextCellEditor({
     if (e.key === 'Escape') {
       done.current = true;
       onCancel();
-    } else if (e.key === 'Enter' && !(column.type === 'text' && e.shiftKey)) {
+    } else if (
+      e.key === 'Enter' &&
+      !e.nativeEvent.isComposing &&
+      !(column.type === 'text' && e.shiftKey)
+    ) {
       e.preventDefault();
       commit('down');
     } else if (e.key === 'Tab') {
@@ -316,7 +320,7 @@ export function ChoicePicker({
         value={q}
         onChange={(e) => setQ(e.target.value)}
         onKeyDown={(e) => {
-          if (e.key === 'Enter') {
+          if (e.key === 'Enter' && !e.nativeEvent.isComposing) {
             e.preventDefault();
             if (filtered[0] && (exact || !q.trim())) toggle(filtered[0].id);
             else if (q.trim()) {
@@ -589,7 +593,11 @@ export function FieldEditor({
             value={text}
             onChange={(e) => setText(e.target.value)}
             onBlur={commit}
-            onKeyDown={(e) => e.key === 'Enter' && (e.target as HTMLInputElement).blur()}
+            onKeyDown={(e) =>
+              e.key === 'Enter' &&
+              !e.nativeEvent.isComposing &&
+              (e.target as HTMLInputElement).blur()
+            }
             className={cn(isNumeric(column.type) && 'pr-12 text-right')}
           />
           {(column.type === 'currency' || column.type === 'percent') && (

@@ -18,7 +18,7 @@ import { Input, NativeSelect } from '@/components/ui/input';
 import { Spinner, Switch } from '@/components/ui/misc';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { AttachmentsPanel } from '@/components/common/AttachmentsPanel';
-import { CommitInput, DecimalInput } from '@/components/common/inputs';
+import { CommitInput, DecimalInput, DateInput } from '@/components/common/inputs';
 import { TagPicker } from '@/components/common/TagPicker';
 import { Page, PageHeader } from '@/components/layout/PageHeader';
 import { useApiMutation, useClient, useProjects } from '@/hooks/work';
@@ -153,7 +153,14 @@ export function ClientDetailPage() {
   const navigate = useNavigate();
   const q = useClient(clientId);
   const projects = useProjects({ clientId });
-  const patch = usePatch<Client>(`/clients/${clientId}`);
+  const patch = usePatch<{ client: Client }>(
+    `/clients/${clientId}`,
+    ['client', clientId],
+    (old, p) => ({
+      ...old,
+      client: { ...old.client, ...p },
+    }),
+  );
   const trash = useTrashWithUndo();
   const [newProject, setNewProject] = useState(false);
   const year = new Date().getFullYear();
@@ -349,10 +356,9 @@ export function ClientDetailPage() {
                   />
                 </Field>
                 <Field label="NDA firmado el">
-                  <Input
-                    type="date"
-                    value={client.ndaSignedAt ?? ''}
-                    onChange={(e) => save({ ndaSignedAt: e.target.value || null })}
+                  <DateInput
+                    value={client.ndaSignedAt}
+                    onCommit={(v) => save({ ndaSignedAt: v })}
                   />
                 </Field>
                 <Field label="Valoración">

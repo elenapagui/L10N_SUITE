@@ -52,8 +52,10 @@ function ChipsInput({
 }) {
   const [text, setText] = useState('');
   const add = (v: string) => {
-    const t = v.trim();
-    if (t && !value.includes(t)) onChange([...value, t]);
+    const t = v.trim().normalize('NFC');
+    const key = t.toLocaleLowerCase('es');
+    if (t && !value.some((x) => x.normalize('NFC').toLocaleLowerCase('es') === key))
+      onChange([...value, t]);
     setText('');
   };
   const listId = useMemo(() => `sug-${Math.random().toString(36).slice(2)}`, []);
@@ -79,7 +81,7 @@ function ChipsInput({
         value={text}
         onChange={(e) => setText(e.target.value)}
         onKeyDown={(e) => {
-          if (e.key === 'Enter') {
+          if (e.key === 'Enter' && !e.nativeEvent.isComposing) {
             e.preventDefault();
             add(text);
           }
@@ -255,7 +257,7 @@ export function GameDetailPage() {
   const q = useGame(gameId);
   const projects = useProjects({ gameId });
   const jobs = useJobs({ gameId });
-  const patch = usePatch<Game>(`/games/${gameId}`);
+  const patch = usePatch<Game>(`/games/${gameId}`, ['game', gameId]);
   const trash = useTrashWithUndo();
   const [newProject, setNewProject] = useState(false);
 

@@ -517,7 +517,7 @@ export function PageViewPage() {
           value={title}
           onChange={(e) => onTitle(e.target.value.replace(/\n/g, ''))}
           onKeyDown={(e) => {
-            if (e.key === 'Enter') {
+            if (e.key === 'Enter' && !e.nativeEvent.isComposing) {
               e.preventDefault();
               editorRef.current?.editor.focus();
             }

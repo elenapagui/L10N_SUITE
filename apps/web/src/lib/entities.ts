@@ -27,6 +27,13 @@ export function entityRoute(
       return { to: '/academico/biblioteca', search: { ref: id } };
     case 'submission':
       return { to: '/academico/publicaciones' };
+    case 'journal':
+      return { to: '/academico/revistas', search: { revista: id } };
+    // Sin ficha propia: se abre la página que las muestra.
+    case 'task_list':
+      return { to: '/trabajo/tareas' };
+    case 'corpus_version':
+      return { to: '/corpus' };
     case 'glossary_term':
       return { to: `/recursos/glosario/${id}` };
     case 'character':

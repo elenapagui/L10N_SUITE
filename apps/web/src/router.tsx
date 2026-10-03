@@ -216,6 +216,8 @@ const publicationRoute = createRoute({
 const journalsRoute = createRoute({
   getParentRoute: () => rootRoute,
   path: '/academico/revistas',
+  validateSearch: (search: Record<string, unknown>): { revista?: string } =>
+    typeof search.revista === 'string' ? { revista: search.revista } : {},
   component: JournalsPage,
 });
 const libraryRoute = createRoute({

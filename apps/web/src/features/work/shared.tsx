@@ -1,15 +1,33 @@
 import type { ReactNode } from 'react';
 import { Link } from '@tanstack/react-router';
+import { useQueryClient, type QueryKey } from '@tanstack/react-query';
 import { ChevronLeft } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { useApiMutation } from '@/hooks/work';
 import { api } from '@/lib/api';
 import { cn } from '@/lib/utils';
 
-/** PATCH de una ficha con refresco de los listados. */
-export function usePatch<T = unknown>(url: string) {
-  return useApiMutation((patch: Record<string, unknown>) =>
-    api<T>(url, { method: 'PATCH', body: patch }),
+/**
+ * Guarda cambios parciales de una ficha. Con `cacheKey`, el cambio se aplica antes en la caché:
+ * así dos ediciones seguidas (por ejemplo, dos bandas del análisis) no se pisan mientras la
+ * primera aún se está guardando.
+ */
+export function usePatch<T = unknown>(
+  url: string,
+  cacheKey?: QueryKey,
+  apply: (old: T, patch: Record<string, unknown>) => T = (old, patch) => ({ ...old, ...patch }),
+) {
+  const qc = useQueryClient();
+  return useApiMutation(
+    (patch: Record<string, unknown>) => api<T>(url, { method: 'PATCH', body: patch }),
+    {
+      onMutate: cacheKey
+        ? async (patch) => {
+            await qc.cancelQueries({ queryKey: cacheKey });
+            qc.setQueryData<T>(cacheKey, (old) => (old ? apply(old, patch) : old));
+          }
+        : undefined,
+    },
   );
 }
 

@@ -78,7 +78,14 @@ function useSyncActions() {
       if (!ok) return;
     }
     await run(
-      () => api<SyncStatus>('/sync/pull', { method: 'POST', body: { force } }),
+      async () => {
+        const s = await api<SyncStatus>('/sync/pull', { method: 'POST', body: { force } });
+        if (s.conflict || s.lastEvent?.kind !== 'received') return s;
+        // Ya se avisa aquí: se confirma el aviso para que ni la barra superior ni la recarga
+        // lo vuelvan a mostrar.
+        await api('/sync/ack', { method: 'POST' }).catch(() => undefined);
+        return { ...s, lastEvent: null };
+      },
       (s) => {
         if (s.conflict) return;
         toast.success('Datos del otro ordenador cargados');

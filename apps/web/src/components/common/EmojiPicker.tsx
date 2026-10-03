@@ -118,7 +118,8 @@ export function EmojiPicker({
             maxLength={8}
             onChange={(e) => setCustom(e.target.value)}
             onKeyDown={(e) => {
-              if (e.key === 'Enter' && custom.trim()) pick(custom.trim());
+              if (e.key === 'Enter' && !e.nativeEvent.isComposing && custom.trim())
+                pick(custom.trim());
             }}
           />
           <Button variant="ghost" size="sm" onClick={() => pick(null)}>

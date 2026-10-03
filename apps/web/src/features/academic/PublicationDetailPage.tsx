@@ -33,7 +33,7 @@ import { Checkbox, Spinner } from '@/components/ui/misc';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { AttachmentsPanel } from '@/components/common/AttachmentsPanel';
 import { EntitySelect } from '@/components/common/EntitySelect';
-import { CommitInput } from '@/components/common/inputs';
+import { CommitInput, DateInput } from '@/components/common/inputs';
 import { TagPicker } from '@/components/common/TagPicker';
 import { Page, PageHeader } from '@/components/layout/PageHeader';
 import { useTrashWithUndo } from '@/hooks/mutations';
@@ -177,10 +177,16 @@ function AuthorsEditor({
 function KeywordsEditor({ value, onChange }: { value: string[]; onChange: (v: string[]) => void }) {
   const [draft, setDraft] = useState('');
   const add = () => {
-    const words = draft
-      .split(/[,;]/)
-      .map((w) => w.trim())
-      .filter((w) => w && !value.includes(w));
+    const seen = new Set(value.map((w) => w.normalize('NFC').toLocaleLowerCase('es')));
+    const words: string[] = [];
+    for (const raw of draft.split(/[,;]/)) {
+      const w = raw.trim().normalize('NFC');
+      const key = w.toLocaleLowerCase('es');
+      if (w && !seen.has(key)) {
+        seen.add(key);
+        words.push(w);
+      }
+    }
     if (words.length) onChange([...value, ...words]);
     setDraft('');
   };
@@ -204,6 +210,8 @@ function KeywordsEditor({ value, onChange }: { value: string[]; onChange: (v: st
         placeholder="Escribe y pulsa Intro"
         onChange={(e) => setDraft(e.target.value)}
         onKeyDown={(e) => {
+          // Con el IME coreano, Intro confirma la sílaba: no añade la palabra a medias.
+          if (e.nativeEvent.isComposing) return;
           if (e.key === 'Enter' || e.key === ',') {
             e.preventDefault();
             add();
@@ -783,11 +791,10 @@ export function PublicationDetailPage() {
                 />
               </Field>
               <Field label="Plazo">
-                <Input
-                  type="date"
-                  value={p.deadline ?? ''}
-                  onChange={(e) => void save({ deadline: e.target.value || null })}
-                  data-testid="publication-deadline"
+                <DateInput
+                  value={p.deadline}
+                  onCommit={(v) => void save({ deadline: v })}
+                  testId="publication-deadline"
                 />
               </Field>
               <Field label="Idioma">
