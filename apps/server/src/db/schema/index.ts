@@ -4,3 +4,4 @@ export * from './finance';
 export * from './knowledge';
 export * from './corpus';
 export * from './academic';
+export * from './career';

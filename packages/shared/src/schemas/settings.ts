@@ -23,6 +23,8 @@ export const preferenceSettingsSchema = z.object({
   notifications: z.boolean().default(true),
   /** Tipos de cambio aproximados para las previsiones: 1 unidad de la moneda = X de la principal. */
   fxRates: z.record(z.string().length(3), z.number().positive().max(1_000_000)).default({}),
+  /** Días sin respuesta tras los que se avisa para escribir de nuevo a una empresa. */
+  applicationFollowUpDays: z.number().int().min(1).max(90).default(10),
 });
 
 export const backupSettingsSchema = z.object({

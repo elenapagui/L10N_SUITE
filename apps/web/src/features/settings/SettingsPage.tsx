@@ -159,7 +159,7 @@ function PreferencesForm({ initial }: { initial: Settings['preferences'] }) {
   /** Guarda un número solo si ha cambiado y es válido; vacío o fuera de rango, se restaura. */
   const saveNumber = (
     input: HTMLInputElement,
-    key: 'defaultVatPct' | 'defaultIrpfPct' | 'paymentTermsDays',
+    key: 'defaultVatPct' | 'defaultIrpfPct' | 'paymentTermsDays' | 'applicationFollowUpDays',
     min: number,
     max: number,
     integer = false,
@@ -243,6 +243,19 @@ function PreferencesForm({ initial }: { initial: Settings['preferences'] }) {
             max={365}
             defaultValue={initial.paymentTermsDays}
             onBlur={(e) => saveNumber(e.target, 'paymentTermsDays', 0, 365, true)}
+          />
+        </Field>
+        <Field
+          label="Seguimiento de candidaturas (días)"
+          hint="Días sin respuesta tras los que se avisa para escribir de nuevo a una empresa."
+        >
+          <Input
+            type="number"
+            min={1}
+            max={90}
+            defaultValue={initial.applicationFollowUpDays}
+            onBlur={(e) => saveNumber(e.target, 'applicationFollowUpDays', 1, 90, true)}
+            data-testid="pref-follow-up-days"
           />
         </Field>
         <div className="grid grid-cols-2 gap-3">

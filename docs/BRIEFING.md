@@ -136,7 +136,8 @@ Panel del día con las tareas de hoy y las vencidas, las entregas de los próxim
 ### 4.8 Funciones comunes
 
 - Búsqueda global y acciones rápidas (Ctrl/Cmd+K).
-- Calendario unificado con entregas, tareas, plazos académicos y vencimientos de cobro.
+- Calendario unificado con entregas, tareas, plazos académicos, vencimientos de cobro y entrevistas y pruebas de las candidaturas.
+- **Empleo:** seguimiento de las candidaturas a ofertas (altas en agencias y puestos en plantilla) con estados, historial de cada paso, avisos de seguimiento, documentos y paso a cliente.
 - Etiquetas comunes, adjuntos (se arrastran a la app y se abren con la aplicación predeterminada), vínculos entre fichas y actividad reciente.
 - Papelera durante 30 días y opción de deshacer al borrar.
 - Ajustes: datos fiscales, moneda, IVA e IRPF por defecto, idiomas y pares, estados y tema claro u oscuro.

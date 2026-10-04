@@ -17,6 +17,7 @@ import { registerInvoiceEntity } from './modules/finance/invoices';
 import { registerExpenseEntity } from './modules/finance/expenses';
 import { registerAcademicEntities } from './modules/academic/publications';
 import { registerReferenceEntity } from './modules/academic/references';
+import { registerCareerEntities } from './modules/career/applications';
 import { registerCorpusEntities } from './modules/corpus/catalog';
 import { registerPageEntity } from './modules/knowledge/pages';
 import { registerResourceEntities } from './modules/knowledge/resources';
@@ -42,6 +43,7 @@ export function registerEntities(): void {
   registerCorpusEntities();
   registerAcademicEntities();
   registerReferenceEntity();
+  registerCareerEntities();
 }
 
 /**

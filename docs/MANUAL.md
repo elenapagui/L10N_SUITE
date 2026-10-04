@@ -127,7 +127,7 @@ Por defecto muestra la semana anterior, y los lunes la app te avisa al abrirla. 
 
 - **Cronómetro:** el de la barra superior funciona con cualquier proyecto, encargo o tarea, y solo hay uno en marcha. También puedes añadir tiempo a mano en **Tiempo**.
 - **Datos de cada encargo:** muestra el tiempo dedicado y el €/hora efectivo.
-- **Calendario:** reúne las entregas, las tareas con fecha, los plazos de tus publicaciones, las fechas para enviar cambios a una revista y los vencimientos de cobro de las facturas. Arrastra una entrega, una tarea o un plazo a otro día para cambiar su fecha.
+- **Calendario:** reúne las entregas, las tareas con fecha, los plazos de tus publicaciones, las fechas para enviar cambios a una revista, los vencimientos de cobro de las facturas y las entrevistas, pruebas y seguimientos de tus candidaturas. Arrastra una entrega, una tarea o un plazo a otro día para cambiar su fecha.
 - **Avisos:** la app avisa de las entregas en menos de 24 horas, las entregas atrasadas y las tareas vencidas. Se pueden desactivar en **Ajustes → Preferencias**.
 
 ## Finanzas: facturación, gastos e informes
@@ -157,6 +157,19 @@ La app **no emite facturas**: las emites con tu programa de facturación (o tu g
   **Excel para la gestoría** descarga las facturas, los gastos y los resúmenes del año o del trimestre.
 
 - Los importes en otras monedas se convierten a la principal con el tipo de cambio de cada factura o gasto.
+
+## Empleo: candidaturas
+
+En **Empleo → Candidaturas** llevas las ofertas a las que te presentas: altas como colaboradora en agencias (normalmente con prueba de traducción) y puestos en plantilla.
+
+- **Nueva candidatura:** el puesto, la empresa, si es freelance o en plantilla y el enlace a la oferta. Marca «Ya he enviado la solicitud» si ya te has presentado; si no, queda como **Guardada** para presentarte más adelante (con su plazo, si lo tiene).
+- **Tablero y lista:** las candidaturas por estado: Guardada, Solicitada, Prueba, Entrevista, Oferta, Aceptada, Rechazada, Sin respuesta y Retirada. Arrastra una tarjeta para cambiar su estado. Arriba ves cuántas tienes en curso, cuántas has presentado, qué parte ha tenido respuesta y cuántos días tardan de media en contestar.
+- **Historial:** en la ficha de cada candidatura, añade cada paso con su fecha: prueba recibida (con su plazo de entrega), prueba enviada, entrevista (con la hora), «he escrito para preguntar», respuesta u oferta, con tus notas. El estado avanza solo (una prueba recibida la pasa a **Prueba**; una entrevista, a **Entrevista**), y los cambios de estado quedan anotados.
+- **Seguimiento:** si pasan 10 días sin noticias desde el último paso, la app te avisa para que escribas a la empresa. La fecha se aplaza sola con cada paso y puedes cambiarla en la ficha. Los días se cambian en **Ajustes → Preferencias**.
+- **Avisos y calendario:** las entrevistas, los plazos de las pruebas, los plazos para presentarte y los seguimientos aparecen en el calendario, y la app avisa el día antes. La revisión semanal cuenta las candidaturas enviadas y las respuestas.
+- **Condiciones:** la tarifa ofrecida o acordada (freelance) o la horquilla salarial (en plantilla).
+- **Documentos:** adjunta el CV, la carta de presentación y la prueba que enviaste.
+- **Crear cliente:** cuando una agencia te da de alta, **Crear cliente** crea su ficha con la web, el correo, la persona de contacto y la tarifa acordada, y enlaza la candidatura con el cliente.
 
 ## Páginas (sustituyen a Notion)
 

@@ -276,7 +276,7 @@ export interface Template extends Timestamps {
 
 export interface CalendarEvent {
   id: string;
-  kind: 'task' | 'job' | 'publication' | 'submission' | 'invoice';
+  kind: 'task' | 'job' | 'publication' | 'submission' | 'invoice' | 'application';
   title: string;
   date: string;
   time: string | null;
@@ -331,6 +331,8 @@ export interface WeeklyReview {
     hours: { total: number; byArea: { name: string; color: string; hours: number }[] };
     tasksCompleted: { count: number; titles: string[] };
     academic: { summary: string; createdAt: string; entityType: string; entityId: string }[];
+    /** Candidaturas enviadas y respuestas recibidas (pruebas, entrevistas, ofertas…). */
+    applications: { sent: number; responses: number };
     referencesRead: number;
     referencesAdded: number;
     corpus: { documents: number; segments: number };

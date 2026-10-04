@@ -17,6 +17,7 @@ Aplicación de escritorio para dirigir la actividad profesional de traducción d
 | 4    | Corpus                                                                          | ✅ Disponible |
 | 5    | Académico                                                                       | ✅ Disponible |
 | 6    | Extras (sincronización, revisión semanal, rentabilidad, morfología del coreano) | ✅ Disponible |
+| —    | Empleo: seguimiento de candidaturas                                             | ✅ Disponible |
 
 ## Descargar
 

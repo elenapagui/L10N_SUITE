@@ -7,6 +7,7 @@ import {
   ChevronLeft,
   ChevronRight,
   Package,
+  BriefcaseBusiness,
 } from 'lucide-react';
 import { addDaysISO, toISODate, todayISO, type CalendarEvent } from '@l10n/shared';
 import { Button } from '@/components/ui/button';
@@ -75,6 +76,8 @@ export function CalendarPage() {
       void navigate({ to: '/trabajo/encargos/$jobId', params: { jobId: e.entityId } });
     } else if (e.kind === 'invoice') {
       void navigate({ to: '/finanzas/facturas', search: { factura: e.entityId } });
+    } else if (e.kind === 'application') {
+      void navigate({ to: '/empleo/$applicationId', params: { applicationId: e.entityId } });
     } else {
       void navigate({
         to: '/academico/publicaciones/$publicationId',
@@ -154,7 +157,9 @@ export function CalendarPage() {
                     <button
                       key={e.id}
                       type="button"
-                      draggable={e.kind !== 'submission' && e.kind !== 'invoice'}
+                      draggable={
+                        e.kind !== 'submission' && e.kind !== 'invoice' && e.kind !== 'application'
+                      }
                       onDragStart={(ev) =>
                         ev.dataTransfer.setData('text/plain', `${e.kind}:${e.entityId}`)
                       }
@@ -169,7 +174,9 @@ export function CalendarPage() {
                             ? 'bg-violet-500/10 font-medium text-violet-700 dark:text-violet-300'
                             : e.kind === 'invoice'
                               ? 'bg-emerald-500/10 text-emerald-700 dark:text-emerald-300'
-                              : 'hover:bg-muted',
+                              : e.kind === 'application'
+                                ? 'bg-cyan-500/10 font-medium text-cyan-800 dark:text-cyan-300'
+                                : 'hover:bg-muted',
                       )}
                     >
                       {e.kind === 'job' ? (
@@ -178,6 +185,8 @@ export function CalendarPage() {
                         <GraduationCap className="size-3 shrink-0" />
                       ) : e.kind === 'invoice' ? (
                         <Receipt className="size-3 shrink-0" />
+                      ) : e.kind === 'application' ? (
+                        <BriefcaseBusiness className="size-3 shrink-0" />
                       ) : (
                         <span
                           className="size-2 shrink-0 rounded-full"

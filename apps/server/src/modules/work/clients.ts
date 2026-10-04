@@ -49,7 +49,7 @@ export const CLIENT_COLUMNS = columns({
   updatedAt: 'updated_at',
 });
 
-const CONTACT_COLUMNS = columns({
+export const CONTACT_COLUMNS = columns({
   id: 'id',
   clientId: 'client_id',
   name: 'name',

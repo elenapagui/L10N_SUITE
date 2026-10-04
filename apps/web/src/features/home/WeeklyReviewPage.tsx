@@ -8,6 +8,7 @@ import {
   GraduationCap,
   Package,
   Printer,
+  BriefcaseBusiness,
 } from 'lucide-react';
 import {
   UNIT_PLURALS,
@@ -119,6 +120,13 @@ function ReviewBody({ r }: { r: WeeklyReview }) {
             value={formatNumber(d.hours.total, 1)}
             hint={`${d.tasksCompleted.count} ${d.tasksCompleted.count === 1 ? 'tarea completada' : 'tareas completadas'}`}
           />
+          {(d.applications.sent > 0 || d.applications.responses > 0) && (
+            <Stat
+              label="Candidaturas enviadas"
+              value={d.applications.sent}
+              hint={`${d.applications.responses} ${d.applications.responses === 1 ? 'respuesta' : 'respuestas'} (pruebas, entrevistas, ofertas)`}
+            />
+          )}
         </div>
         <div className="grid gap-4 lg:grid-cols-3">
           <Card>
@@ -269,13 +277,17 @@ function ReviewBody({ r }: { r: WeeklyReview }) {
           </Card>
           <Card>
             <CardHeader>
-              <CardTitle className="text-base">Plazos académicos</CardTitle>
+              <CardTitle className="text-base">Plazos académicos y de empleo</CardTitle>
             </CardHeader>
             <CardContent>
               <List empty="Ningún plazo.">
                 {n.deadlines.map((e) => (
                   <li key={`${e.kind}-${e.id}`} className="flex items-center gap-2">
-                    <FileText className="size-4 shrink-0 text-muted-foreground" />
+                    {e.kind === 'application' ? (
+                      <BriefcaseBusiness className="size-4 shrink-0 text-muted-foreground" />
+                    ) : (
+                      <FileText className="size-4 shrink-0 text-muted-foreground" />
+                    )}
                     <span className="min-w-0 flex-1 truncate">{e.title}</span>
                     <span className="text-xs text-muted-foreground">{short(e.date)}</span>
                   </li>

@@ -24,3 +24,4 @@ export * from './academic/bibtex';
 export * from './academic/ris';
 export * from './academic/apa';
 export * from './academic/academic';
+export * from './career/career';

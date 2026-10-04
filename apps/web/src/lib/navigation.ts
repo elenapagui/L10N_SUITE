@@ -3,6 +3,7 @@ import {
   Newspaper,
   BookOpen,
   Building2,
+  BriefcaseBusiness,
   CalendarDays,
   ChartColumn,
   FileText,
@@ -123,6 +124,17 @@ export const NAV_SECTIONS: NavSection[] = [
         icon: ChartColumn,
         phase: 2,
         keywords: 'ingresos iva irpf',
+      },
+    ],
+  },
+  {
+    label: 'Empleo',
+    items: [
+      {
+        label: 'Candidaturas',
+        to: '/empleo',
+        icon: BriefcaseBusiness,
+        keywords: 'ofertas trabajo empleo solicitudes entrevistas pruebas agencias',
       },
     ],
   },

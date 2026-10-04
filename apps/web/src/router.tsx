@@ -36,6 +36,8 @@ import { ProjectsPage } from '@/features/work/ProjectsPage';
 import { QueriesPage } from '@/features/work/QueriesPage';
 import { TasksPage } from '@/features/work/tasks/TasksPage';
 import { TimePage } from '@/features/work/time/TimePage';
+import { ApplicationsPage } from '@/features/career/ApplicationsPage';
+import { ApplicationDetailPage } from '@/features/career/ApplicationDetailPage';
 import { ALL_NAV_ITEMS, AVAILABLE_PHASE } from '@/lib/navigation';
 
 const rootRoute = createRootRoute({
@@ -228,6 +230,17 @@ const libraryRoute = createRoute({
   component: LibraryPage,
 });
 
+const applicationsRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: '/empleo',
+  component: ApplicationsPage,
+});
+const applicationRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: '/empleo/$applicationId',
+  component: ApplicationDetailPage,
+});
+
 const routes = [
   homeRoute,
   weeklyReviewRoute,
@@ -261,6 +274,8 @@ const routes = [
   publicationRoute,
   journalsRoute,
   libraryRoute,
+  applicationsRoute,
+  applicationRoute,
 ];
 
 /** Secciones de fases futuras: se muestran como «en construcción». */

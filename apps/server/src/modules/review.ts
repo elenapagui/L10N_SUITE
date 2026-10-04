@@ -8,6 +8,7 @@ import { cashForecast, currencyRates } from './finance/reports';
 import { listInvoices } from './finance/invoices';
 import { calendarEvents } from './work/dashboard';
 import { listTasks } from './work/tasks';
+import { applicationWeek } from './career/applications';
 
 const toBase = (cents: number, rate: number) => Math.round(cents * (rate || 1));
 const SECS = `(julianday(te.ended_at) - julianday(te.started_at)) * 86400`;
@@ -172,6 +173,7 @@ export function weeklyReview(ctx: AppContext, week?: string): WeeklyReview {
         titles: completed.slice(0, 12).map((t) => t.title),
       },
       academic: activity.filter((a) => a.entityType !== 'reference'),
+      applications: applicationWeek(ctx, weekStart, weekEnd),
       referencesRead,
       referencesAdded,
       corpus,
@@ -180,7 +182,12 @@ export function weeklyReview(ctx: AppContext, week?: string): WeeklyReview {
       deliveries,
       tasks,
       deadlines: events
-        .filter((e) => e.kind === 'publication' || e.kind === 'submission')
+        .filter(
+          (e) =>
+            e.kind === 'publication' ||
+            e.kind === 'submission' ||
+            (e.kind === 'application' && !e.id.startsWith('application-follow-up')),
+        )
         .map((e) => ({ kind: e.kind, id: e.entityId, title: e.title, date: e.date })),
       collections: {
         cents: nextItems.reduce((s, i) => s + i.baseCents!, 0),

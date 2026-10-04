@@ -33,6 +33,7 @@ import { taskRoutes } from './modules/work/tasks';
 import { templateRoutes } from './modules/work/templates';
 import { timeRoutes } from './modules/work/time';
 import { publicationRoutes } from './modules/academic/publications';
+import { applicationRoutes } from './modules/career/applications';
 import { referenceRoutes } from './modules/academic/references';
 import { catalogRoutes } from './modules/corpus/catalog';
 import { concordanceRoutes } from './modules/corpus/concordance';
@@ -183,6 +184,7 @@ export async function buildApp(options: BuildOptions): Promise<FastifyInstance> 
   await app.register(exportRoutes);
   await app.register(publicationRoutes);
   await app.register(referenceRoutes);
+  await app.register(applicationRoutes);
   await app.register(expenseRoutes);
   await app.register(reportRoutes);
   await app.register(reviewRoutes);

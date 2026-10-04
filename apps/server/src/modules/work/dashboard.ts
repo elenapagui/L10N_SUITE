@@ -14,6 +14,7 @@ import { getSettings } from '../../services/settings';
 import { OPEN_JOB_STATUSES } from './clients';
 import { listJobs } from './jobs';
 import { listTasks } from './tasks';
+import { applicationCalendarEvents, applicationReminders } from '../career/applications';
 
 function startOfLocalDay(d: Date): Date {
   return new Date(d.getFullYear(), d.getMonth(), d.getDate());
@@ -194,6 +195,7 @@ export function calendarEvents(ctx: AppContext, from: string, to: string): Calen
       });
     }
   }
+  if (has('job_applications')) events.push(...applicationCalendarEvents(ctx, from, to));
   return events.sort((a, b) =>
     (a.date + (a.time ?? '99')).localeCompare(b.date + (b.time ?? '99')),
   );
@@ -251,6 +253,7 @@ export function pendingReminders(ctx: AppContext): Reminder[] {
       route: '/trabajo/tareas',
     });
   }
+  reminders.push(...applicationReminders(ctx));
   if (now.getDay() === 1) {
     reminders.push({
       key: `weekly-review:${today}`,
