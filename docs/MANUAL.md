@@ -154,7 +154,7 @@ La app **no emite facturas**: las emites con tu programa de facturación (o tu g
   - **Resumen para facturar** descarga un Excel con los encargos, volúmenes e importes para copiarlos en tu programa. Lleva el aviso «No es una factura».
   - **Registrar factura** guarda el número, la fecha, los encargos incluidos y otros conceptos (recargos, gestión de terminología…). El IVA, el IRPF y el vencimiento salen de la ficha del cliente o, si no los tiene, de **Ajustes**. Si la moneda no es la principal, indica el tipo de cambio que aplicas.
 - **Facturación → Facturas:** al abrir una factura puedes marcarla como cobrada (con la fecha de cobro), adjuntar su PDF, descargar el resumen o anularla. Al anularla, sus encargos vuelven a «Por facturar». Las facturas vencidas aparecen en rojo, en el inicio y como aviso.
-- **Gastos:** concepto, fecha, proveedor, categoría, base, IVA soportado, si es deducible y el **banco** del que sale (por defecto, tu cuenta principal). Después de guardar puedes adjuntar el justificante. Con el filtro de arriba ves los gastos de un banco o los **pendientes de cargar**.
+- **Gastos:** concepto, fecha, proveedor, categoría, base, IVA soportado, si es deducible y el **banco** del que sale (por defecto, tu cuenta principal). Después de guardar puedes adjuntar el justificante. Con el filtro de arriba ves los gastos de un banco o los **pendientes de cargar** (de cualquier año).
 - **Gastos recurrentes** (pestaña «Recurrentes»): el dominio cada año, Netflix cada mes, la cuota de autónomos…
   - Créalos con **Nuevo gasto recurrente** (concepto, importe, IVA, banco, frecuencia y primer cargo), o marca **Se repite** al apuntar un gasto: ese será el primero de la serie.
   - Frecuencias: cada semana, mes, trimestre o año (o cada 2, 3… de ellas). Si el cargo es el día 31, en los meses más cortos se apunta el último día y luego vuelve al 31.
@@ -165,7 +165,7 @@ La app **no emite facturas**: las emites con tu programa de facturación (o tu g
   - **El saldo es manual.** **Actualizar saldo** pone lo que dice tu banco en una fecha.
   - Los gastos asociados a una cuenta **no se restan solos**: pulsa **Cargar** (en la lista de gastos o en la ficha de la cuenta) cuando te los cobren. Así, si actualizas el saldo cuando el cargo ya está hecho, no se descuenta dos veces: deja ese gasto sin cargar.
   - La flecha junto a «Cargado el…» **deshace el cargo** y devuelve el importe. Si cambias el importe o el banco de un gasto ya cargado, la app rehace el cargo, y si lo envías a la papelera devuelve el importe.
-  - Solo se puede cargar un gasto en la moneda de la cuenta. Si te lo cobran en otra moneda, actualiza el saldo a mano.
+  - Solo se puede cargar un gasto en la moneda de la cuenta. Si te lo cobran en otra moneda, actualiza el saldo a mano. Por lo mismo, la moneda de una cuenta no se puede cambiar cuando ya tiene cargos.
   - En la ficha de la cuenta ves los gastos pendientes y el **historial de movimientos** (saldos actualizados, cargos y cargos deshechos).
   - Una cuenta es la **principal**: es la que se propone al apuntar un gasto.
 - **Informes → Previsión de cobros:** lo que esperas cobrar a partir de hoy (con IVA e IRPF):

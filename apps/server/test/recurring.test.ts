@@ -243,4 +243,53 @@ describe('gastos recurrentes', () => {
       ['2026-02-28', 0.9],
     ]);
   });
+
+  it('el aviso no incluye los gastos cargados ni el apuntado a mano al marcar «Se repite»', async () => {
+    const bank = await req<BankAccount>(
+      'POST',
+      '/api/bank-accounts',
+      { name: 'Principal', balanceCents: 50_000 },
+      201,
+    );
+    const first = await req<Expense>(
+      'POST',
+      '/api/expenses',
+      {
+        date: '2026-01-24',
+        concept: 'Hosting',
+        baseCents: 500,
+        vatPct: 0,
+        bankAccountId: bank.id,
+      },
+      201,
+    );
+    clock = new Date('2026-01-31T10:01:00');
+    await req(
+      'POST',
+      '/api/recurring-expenses',
+      {
+        concept: 'Hosting',
+        baseCents: 500,
+        vatPct: 0,
+        frequency: 'weekly',
+        startDate: '2026-01-24',
+        bankAccountId: bank.id,
+        fromExpenseId: first.id,
+      },
+      201,
+    );
+    const hosting = (await req<Expense[]>('GET', '/api/expenses')).filter(
+      (e) => e.concept === 'Hosting',
+    );
+    expect(hosting.map((e) => e.date).sort()).toEqual(['2026-01-24', '2026-01-31']);
+    const reminders = async () =>
+      (await req<Reminder[]>('GET', '/api/reminders')).filter(
+        (x) => x.title === 'Gasto recurrente apuntado',
+      );
+    // Solo el que se ha apuntado solo (el del 31), no el que ella escribió.
+    expect(await reminders()).toHaveLength(1);
+    const auto = hosting.find((e) => e.date === '2026-01-31')!;
+    await req('POST', `/api/expenses/${auto.id}/charge`);
+    expect(await reminders()).toHaveLength(0);
+  });
 });

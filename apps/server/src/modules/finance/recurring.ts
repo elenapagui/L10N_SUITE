@@ -215,8 +215,12 @@ export function recurringReminders(ctx: AppContext): Reminder[] {
   const today = todayISO(ctx.now());
   const rows = ctx.sqlite
     .prepare(
-      `SELECT id, concept, total_cents AS totalCents, currency, date FROM expenses
-       WHERE deleted_at IS NULL AND recurring_id IS NOT NULL AND date BETWEEN ? AND ?`,
+      `SELECT e.id, e.concept, e.total_cents AS totalCents, e.currency, e.date,
+         e.bank_account_id AS bankAccountId
+       FROM expenses e JOIN recurring_expenses r ON r.id = e.recurring_id
+       WHERE e.deleted_at IS NULL AND e.charged_at IS NULL AND e.date BETWEEN ? AND ?
+         -- El gasto apuntado a mano al marcar «Se repite» no se ha apuntado solo.
+         AND e.created_at >= r.created_at`,
     )
     .all(addDaysISO(today, -7), today) as {
     id: string;
@@ -224,11 +228,16 @@ export function recurringReminders(ctx: AppContext): Reminder[] {
     totalCents: number;
     currency: string;
     date: string;
+    bankAccountId: string | null;
   }[];
   return rows.map((e) => ({
     key: `recurring-expense:${e.id}`,
     title: 'Gasto recurrente apuntado',
-    body: `${e.concept}: ${formatMoney(e.totalCents, e.currency).replace(/\u00a0/g, ' ')}. Cárgalo en tu banco cuando te lo cobren.`,
+    body: `${e.concept}: ${formatMoney(e.totalCents, e.currency).replace(/\u00a0/g, ' ')}. ${
+      e.bankAccountId
+        ? 'Cárgalo en tu banco cuando te lo cobren.'
+        : 'Indica de qué banco sale para poder cargarlo.'
+    }`,
     route: '/finanzas/gastos',
   }));
 }

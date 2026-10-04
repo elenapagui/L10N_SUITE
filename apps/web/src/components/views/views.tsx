@@ -102,12 +102,25 @@ export function ViewSwitcher({
 }
 
 // ── Periodo ────────────────────────────────────────────────────────────────
-/** Periodo elegido (guardado por página) y su rango de fechas. */
+/** Fecha de referencia de cada página mientras la app está abierta (al abrirla, hoy). */
+const periodAnchors = new Map<string, string>();
+
+/**
+ * Periodo elegido y su rango de fechas. Se recuerda el tipo (mes, año…) entre sesiones; la
+ * fecha, solo durante la sesión, para que «Mes» sea el mes actual al volver otro día.
+ */
 export function usePeriod(key: string) {
-  const [period, setPeriod] = usePersistentState<Period>(`l10n-period-${key}`, {
-    kind: 'all',
-    anchor: todayISO(),
-  });
+  const [kind, setKind] = usePersistentState<Period['kind']>(`l10n-period-kind-${key}`, 'all');
+  const [anchor, setAnchor] = useState(() => periodAnchors.get(key) ?? todayISO());
+  const period = useMemo<Period>(
+    () => ({ kind: PERIOD_KINDS.some((k) => k.value === kind) ? kind : 'all', anchor }),
+    [kind, anchor],
+  );
+  const setPeriod = (p: Period) => {
+    setKind(p.kind);
+    setAnchor(p.anchor);
+    periodAnchors.set(key, p.anchor);
+  };
   const range = useMemo(() => periodRange(period), [period]);
   return { period, setPeriod, range };
 }

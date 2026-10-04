@@ -490,9 +490,11 @@ export function JobDetailPage() {
                     onCommit={(v) =>
                       save(
                         // Al poner la fecha, la hora habitual de entrega si aún no tiene.
-                        v && !job.dueTime && defaultDueTime
-                          ? { dueDate: v, dueTime: defaultDueTime }
-                          : { dueDate: v },
+                        !v
+                          ? { dueDate: null, dueTime: null }
+                          : !job.dueTime && defaultDueTime
+                            ? { dueDate: v, dueTime: defaultDueTime }
+                            : { dueDate: v },
                       )
                     }
                     testId="job-detail-due"

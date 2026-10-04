@@ -83,7 +83,7 @@ export function listExpenses(
     where.push('e.bank_account_id = ?');
     params.push(f.bankAccountId);
   }
-  if (f.pending) where.push('e.charged_at IS NULL');
+  if (f.pending) where.push('e.charged_at IS NULL AND e.bank_account_id IS NOT NULL');
   return (
     ctx.sqlite
       .prepare(

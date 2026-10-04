@@ -35,6 +35,16 @@ test('encargo: al poner la fecha de entrega, la hora se pone a las 23:59', async
   await expect(page.getByTestId('job-detail-due-time')).toHaveValue('');
   await page.getByTestId('job-detail-due-time-preset').click();
   await expect(page.getByTestId('job-detail-due-time')).toHaveValue('23:59');
+  // Al borrar la fecha, la hora se va con ella.
+  await page.getByTestId('job-detail-due').fill('');
+  await expect(page.getByTestId('job-detail-due-time')).toHaveValue('');
+  await expect
+    .poll(async () => {
+      const res = await request.get(`/api/jobs/${job.id}`);
+      const body = (await res.json()) as { dueDate: string | null; dueTime: string | null };
+      return [body.dueDate, body.dueTime];
+    })
+    .toEqual([null, null]);
 });
 
 test('bancos: cuenta, gasto con su banco y «Cargar»', async ({ page }) => {

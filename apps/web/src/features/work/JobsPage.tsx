@@ -255,6 +255,8 @@ export function NewJobDialog({
                     setDueDate(e.target.value);
                     // Al poner la fecha, la hora habitual de entrega (23:59 por defecto).
                     if (e.target.value && !dueTime && defaultDueTime) setDueTime(defaultDueTime);
+                    // Sin fecha, la hora sola no sirve.
+                    if (!e.target.value) setDueTime('');
                   }}
                   data-testid="job-due"
                 />

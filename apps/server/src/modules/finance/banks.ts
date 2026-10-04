@@ -37,7 +37,7 @@ const BANK_COLUMNS = columns({
 
 const BANK_SELECT = `SELECT ${selectList(BANK_COLUMNS, 'b')},
   (SELECT COUNT(*) FROM expenses e WHERE e.bank_account_id = b.id AND e.deleted_at IS NULL AND e.charged_at IS NULL) AS "pendingCount",
-  (SELECT COALESCE(SUM(e.total_cents), 0) FROM expenses e WHERE e.bank_account_id = b.id AND e.deleted_at IS NULL AND e.charged_at IS NULL) AS "pendingCents"
+  (SELECT COALESCE(SUM(e.total_cents), 0) FROM expenses e WHERE e.bank_account_id = b.id AND e.deleted_at IS NULL AND e.charged_at IS NULL AND e.currency = b.currency) AS "pendingCents"
   FROM bank_accounts b`;
 
 function decode(r: Record<string, unknown>): BankAccount {
@@ -278,7 +278,16 @@ export async function bankRoutes(app: FastifyInstance) {
   app.patch('/api/bank-accounts/:id', async (req) => {
     const { id } = parse(idParam, req.params);
     const patch = parse(bankAccountUpdateSchema, req.body);
-    getBankAccount(ctx, id);
+    const before = getBankAccount(ctx, id);
+    if (patch.currency && patch.currency !== before.currency) {
+      const charged = ctx.sqlite
+        .prepare("SELECT 1 FROM bank_movements WHERE account_id = ? AND kind = 'charge' LIMIT 1")
+        .get(id);
+      if (charged)
+        throw new ValidationError(
+          'Esta cuenta ya tiene gastos cargados en su moneda: no se puede cambiar. Crea otra cuenta para la nueva moneda.',
+        );
+    }
     ctx.sqlite.transaction(() => {
       updateRow(ctx, 'bank_accounts', BANK_COLUMNS, id, patch, { what: 'La cuenta' });
       if (patch.isDefault) clearOtherDefaults(ctx, id);

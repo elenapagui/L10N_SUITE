@@ -143,7 +143,7 @@ function TaskEditor({ task, onOpenTask }: { task: Task; onOpenTask: (id: string)
         <Field label="Fecha límite">
           <DateInput
             value={task.dueDate}
-            onCommit={(v) => save.mutate({ dueDate: v })}
+            onCommit={(v) => save.mutate(v ? { dueDate: v } : { dueDate: null, dueTime: null })}
             testId="task-due"
           />
         </Field>

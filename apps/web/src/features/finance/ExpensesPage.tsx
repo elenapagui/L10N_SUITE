@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
 import { Pause, Play, Plus, Repeat, Trash2, Undo2, Wallet } from 'lucide-react';
 import { toast } from 'sonner';
@@ -193,14 +193,22 @@ function ExpenseDialog({
   const [repeat, setRepeat] = useState(false);
   const [frequency, setFrequency] = useState<RecurringFrequency>('monthly');
   const [busy, setBusy] = useState(false);
+  const bankTouched = useRef(false);
+  // Solo al abrir: si los bancos o los ajustes llegan después, no se pierde lo escrito.
   useEffect(() => {
     if (open) {
       setD(toDraft(expense, baseCurrency, defaultBank));
       setSavedId(expense?.id ?? null);
       setRepeat(false);
       setFrequency('monthly');
+      bankTouched.current = false;
     }
-  }, [open, expense, baseCurrency, defaultBank]);
+  }, [open, expense]); // eslint-disable-line react-hooks/exhaustive-deps
+  // La cuenta principal, si llega con el diálogo ya abierto y aún no se ha elegido banco.
+  useEffect(() => {
+    if (open && !expense && defaultBank && !bankTouched.current)
+      setD((x) => (x.bankAccountId ? x : { ...x, bankAccountId: defaultBank }));
+  }, [open, expense, defaultBank]);
   const set = <K extends keyof Draft>(k: K, v: Draft[K]) => setD((x) => ({ ...x, [k]: v }));
 
   const save = async () => {
@@ -214,29 +222,38 @@ function ExpenseDialog({
       const e = savedId
         ? await api<Expense>(`/expenses/${savedId}`, { method: 'PATCH', body })
         : await api<Expense>('/expenses', { method: 'POST', body });
+      // Ya está guardado: si algo falla después, volver a pulsar Guardar no lo duplica.
+      if (!savedId) setSavedId(e.id);
       // «Se repite»: este gasto es el primero de la serie.
       if (!savedId && repeat) {
-        await api('/recurring-expenses', {
-          method: 'POST',
-          body: {
-            concept: d.concept,
-            supplier: d.supplier || null,
-            category: d.category,
-            currency: d.currency,
-            baseCents: d.baseCents ?? 0,
-            vatPct: d.vatPct,
-            deductible: d.deductible,
-            bankAccountId: d.bankAccountId,
-            frequency,
-            startDate: d.date,
-            fromExpenseId: e.id,
-          },
-        });
-        toast.success(`Se apuntará solo: ${describeFrequency(frequency).toLowerCase()}`);
+        try {
+          await api('/recurring-expenses', {
+            method: 'POST',
+            body: {
+              concept: d.concept,
+              supplier: d.supplier || null,
+              category: d.category,
+              currency: d.currency,
+              baseCents: d.baseCents ?? 0,
+              vatPct: d.vatPct,
+              deductible: d.deductible,
+              bankAccountId: d.bankAccountId,
+              frequency,
+              startDate: d.date,
+              fromExpenseId: e.id,
+            },
+          });
+          toast.success(`Se apuntará solo: ${describeFrequency(frequency).toLowerCase()}`);
+        } catch (error) {
+          toast.error(
+            `El gasto se ha guardado, pero no su repetición${
+              error instanceof Error ? ` (${error.message})` : ''
+            }: créala en la pestaña Recurrentes.`,
+          );
+        }
       }
       await refresh();
       if (savedId) onOpenChange(false);
-      else setSavedId(e.id);
     } catch (error) {
       toast.error(error instanceof Error ? error.message : 'No se ha podido guardar.');
     } finally {
@@ -322,7 +339,10 @@ function ExpenseDialog({
           >
             <BankSelect
               value={d.bankAccountId}
-              onChange={(v) => set('bankAccountId', v)}
+              onChange={(v) => {
+                bankTouched.current = true;
+                set('bankAccountId', v);
+              }}
               banks={banks.data ?? []}
               testId="expense-bank"
             />
@@ -464,9 +484,17 @@ function RecurringDialog({
           notes: '',
         };
   const [d, setD] = useState<RecDraft>(blank);
+  const bankTouched = useRef(false);
   useEffect(() => {
-    if (open) setD(blank());
+    if (open) {
+      setD(blank());
+      bankTouched.current = false;
+    }
   }, [open, item]); // eslint-disable-line react-hooks/exhaustive-deps
+  useEffect(() => {
+    if (open && !item && defaultBank && !bankTouched.current)
+      setD((x) => (x.bankAccountId ? x : { ...x, bankAccountId: defaultBank }));
+  }, [open, item, defaultBank]);
   const set = <K extends keyof RecDraft>(k: K, v: RecDraft[K]) => setD((x) => ({ ...x, [k]: v }));
   const [busy, setBusy] = useState(false);
   const save = async () => {
@@ -560,7 +588,10 @@ function RecurringDialog({
           <Field label="Banco">
             <BankSelect
               value={d.bankAccountId}
-              onChange={(v) => set('bankAccountId', v)}
+              onChange={(v) => {
+                bankTouched.current = true;
+                set('bankAccountId', v);
+              }}
               banks={banks.data ?? []}
             />
           </Field>
@@ -643,7 +674,11 @@ function RecurringPanel() {
   const [open, setOpen] = useState(false);
   const list = q.data ?? [];
   const toggle = async (r: RecurringExpense) => {
-    await api(`/recurring-expenses/${r.id}`, { method: 'PATCH', body: { active: !r.active } });
+    try {
+      await api(`/recurring-expenses/${r.id}`, { method: 'PATCH', body: { active: !r.active } });
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : 'No se ha podido cambiar.');
+    }
     await refresh();
   };
   const columns: ColumnDef<RecurringExpense, unknown>[] = [
@@ -735,20 +770,23 @@ function RecurringPanel() {
       ),
     },
   ];
-  const monthly = list
-    .filter((r) => r.active)
-    .reduce((s, r) => {
-      const perYear =
-        { weekly: 52, monthly: 12, quarterly: 4, yearly: 1 }[r.frequency] / r.interval;
-      return r.currency === (list[0]?.currency ?? 'EUR') ? s + (r.totalCents * perYear) / 12 : s;
-    }, 0);
+  // Coste mensual aproximado de las series en marcha, por moneda.
+  const monthly = new Map<string, number>();
+  for (const r of list) {
+    if (!r.active || (r.endDate && r.nextDate > r.endDate)) continue;
+    const perYear = { weekly: 52, monthly: 12, quarterly: 4, yearly: 1 }[r.frequency] / r.interval;
+    monthly.set(r.currency, (monthly.get(r.currency) ?? 0) + (r.totalCents * perYear) / 12);
+  }
+  const monthlyText = [...monthly]
+    .map(([c, cents]) => formatMoney(Math.round(cents), c))
+    .join(' + ');
   return (
     <div className="grid gap-3">
       <div className="flex flex-wrap items-center gap-3">
         <p className="text-sm text-muted-foreground">
           La app apunta sola cada gasto el día que toca (con su banco) y te avisa. Después solo
           tienes que pulsar «Cargar» cuando te lo cobren.
-          {list.length > 0 && ` Unos ${formatMoney(Math.round(monthly))} al mes.`}
+          {monthlyText && ` Unos ${monthlyText} al mes.`}
         </p>
         <Button
           className="ml-auto"
@@ -790,9 +828,11 @@ export function ExpensesPage() {
   const [year, setYear] = useState(thisYear);
   const [category, setCategory] = useState('');
   const [bank, setBank] = useState('');
+  // Los pendientes de cargar, de cualquier año: un cargo de diciembre puede llegar en enero.
+  const pendingOnly = bank === 'pending';
   const expenses = useExpenses({
-    from: `${year}-01-01`,
-    to: `${year + 1}-01-01`,
+    from: pendingOnly ? undefined : `${year}-01-01`,
+    to: pendingOnly ? undefined : `${year + 1}-01-01`,
     category: category || undefined,
     bankAccountId: bank && bank !== 'pending' ? bank : undefined,
     pending: bank === 'pending' ? 'true' : undefined,
@@ -931,7 +971,14 @@ export function ExpensesPage() {
         <>
           <div className="mb-4 flex flex-wrap items-end gap-3">
             <Field label="Año" className="w-28">
-              <NativeSelect value={String(year)} onChange={(e) => setYear(Number(e.target.value))}>
+              <NativeSelect
+                value={String(year)}
+                onChange={(e) => setYear(Number(e.target.value))}
+                disabled={pendingOnly}
+                title={
+                  pendingOnly ? 'Los pendientes de cargar se muestran de todos los años' : undefined
+                }
+              >
                 {Array.from({ length: 6 }, (_, i) => thisYear + 1 - i).map((y) => (
                   <option key={y}>{y}</option>
                 ))}

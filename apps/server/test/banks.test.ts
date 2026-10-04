@@ -184,4 +184,29 @@ describe('bancos', () => {
     await req('DELETE', `/api/expenses/${e.id}`);
     await req('POST', `/api/expenses/${e.id}/charge`, undefined, 404);
   });
+
+  it('pendientes de cargar: solo con banco, y el importe en la moneda de la cuenta', async () => {
+    const acc = await bank();
+    await expense({ concept: 'Con banco', bankAccountId: acc.id });
+    await expense({ concept: 'Sin banco' });
+    await expense({ concept: 'En dólares', currency: 'USD', bankAccountId: acc.id });
+    const pending = await req<Expense[]>('GET', '/api/expenses?pending=true');
+    expect(pending.map((e) => e.concept).sort()).toEqual(['Con banco', 'En dólares']);
+    const a = await req<BankAccount>('GET', `/api/bank-accounts/${acc.id}`);
+    expect(a).toMatchObject({ pendingCount: 2, pendingCents: 1_210 });
+  });
+
+  it('no se puede cambiar la moneda de una cuenta con cargos', async () => {
+    const fresh = await bank({ name: 'Nueva' });
+    const changed = await req<BankAccount>('PATCH', `/api/bank-accounts/${fresh.id}`, {
+      currency: 'USD',
+    });
+    expect(changed.currency).toBe('USD');
+
+    const acc = await bank();
+    const e = await expense({ bankAccountId: acc.id });
+    await req('POST', `/api/expenses/${e.id}/charge`);
+    await req('PATCH', `/api/bank-accounts/${acc.id}`, { currency: 'USD' }, 400);
+    await req('PATCH', `/api/bank-accounts/${acc.id}`, { name: 'Otro nombre' });
+  });
 });
