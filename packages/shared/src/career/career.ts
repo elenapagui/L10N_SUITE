@@ -27,13 +27,11 @@ const STATUS_VALUES = APPLICATION_STATUSES.map((s) => s.value) as [
   ...ApplicationStatus[],
 ];
 
-/** Estados en los que se espera respuesta de la empresa (para el aviso de seguimiento). */
-export const AWAITING_STATUSES: readonly ApplicationStatus[] = [
-  'applied',
-  'test',
-  'interview',
-  'offer',
-];
+/**
+ * Estados en los que se espera respuesta de la empresa (para el aviso de seguimiento). Con una
+ * oferta, quien tiene que contestar eres tú.
+ */
+export const AWAITING_STATUSES: readonly ApplicationStatus[] = ['applied', 'test', 'interview'];
 
 /** Orden del flujo: un paso nunca hace retroceder el estado. */
 export const STATUS_ORDER: Record<ApplicationStatus, number> = {
@@ -209,4 +207,11 @@ export interface JobApplication {
   eventCount: number;
   createdAt: string;
   updatedAt: string;
+}
+
+/** «www.agencia.com» → «https://www.agencia.com» (para abrir el enlace y sacar la web). */
+export function normalizeUrl(url: string | null | undefined): string | null {
+  const u = url?.trim();
+  if (!u) return null;
+  return /^[a-z][a-z0-9+.-]*:\/\//i.test(u) ? u : `https://${u}`;
 }

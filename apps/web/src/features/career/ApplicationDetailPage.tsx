@@ -15,6 +15,7 @@ import {
   formatDateES,
   labelOf,
   languageOptions,
+  normalizeUrl,
   todayISO,
   type ApplicationEvent,
   type ApplicationEventKind,
@@ -207,6 +208,12 @@ export function ApplicationDetailPage() {
   const navigate = useNavigate();
   const confirm = useConfirm();
   const trash = useTrashWithUndo();
+  // Si se vacía un campo obligatorio, se vuelve a mostrar el valor guardado.
+  const [resetKey, setResetKey] = useState(0);
+  const required = (field: 'title' | 'company') => (v: string | null) => {
+    if (v?.trim()) void save({ [field]: v.trim() });
+    else setResetKey((k) => k + 1);
+  };
   const refresh = () =>
     Promise.all(applicationKeys(applicationId).map((k) => qc.invalidateQueries({ queryKey: k })));
 
@@ -288,7 +295,7 @@ export function ApplicationDetailPage() {
             </NativeSelect>
             {a.url && (
               <Button variant="outline" asChild>
-                <a href={a.url} target="_blank" rel="noreferrer">
+                <a href={normalizeUrl(a.url)!} target="_blank" rel="noreferrer">
                   <ExternalLink /> Oferta
                 </a>
               </Button>
@@ -332,6 +339,13 @@ export function ApplicationDetailPage() {
               <Timeline
                 events={events.data ?? []}
                 onDelete={async (e) => {
+                  const ok = await confirm({
+                    title: '¿Borrar este paso del historial?',
+                    description: `${labelOf(APPLICATION_EVENT_KINDS, e.kind)} del ${formatDateES(e.date)}.`,
+                    confirmLabel: 'Borrar',
+                    destructive: true,
+                  });
+                  if (!ok) return;
                   await api(`/job-applications/${a.id}/events/${e.id}`, { method: 'DELETE' });
                   await refresh();
                 }}
@@ -349,10 +363,18 @@ export function ApplicationDetailPage() {
           <Section title="Oferta">
             <FieldGrid>
               <Field label="Puesto">
-                <CommitInput value={a.title} onCommit={(v) => v && void save({ title: v })} />
+                <CommitInput
+                  key={`title-${resetKey}`}
+                  value={a.title}
+                  onCommit={required('title')}
+                />
               </Field>
               <Field label="Empresa">
-                <CommitInput value={a.company} onCommit={(v) => v && void save({ company: v })} />
+                <CommitInput
+                  key={`company-${resetKey}`}
+                  value={a.company}
+                  onCommit={required('company')}
+                />
               </Field>
               <Field label="Tipo">
                 <NativeSelect

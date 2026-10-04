@@ -5,6 +5,7 @@ import {
   formatMoney,
   normalizeForSearch,
   pairLabel,
+  normalizeUrl,
   parseDecimal,
   percentOf,
   toCents,
@@ -94,5 +95,13 @@ describe('fechas e idiomas', () => {
 
   it('muestra pares de idiomas', () => {
     expect(pairLabel('ko', 'es')).toBe('KO→ES');
+  });
+});
+
+describe('enlaces de las ofertas', () => {
+  it('añade https:// si falta', () => {
+    expect(normalizeUrl('www.agencia.example/empleo')).toBe('https://www.agencia.example/empleo');
+    expect(normalizeUrl('http://a.example')).toBe('http://a.example');
+    expect(normalizeUrl('  ')).toBeNull();
   });
 });

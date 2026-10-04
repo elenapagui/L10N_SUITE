@@ -14,6 +14,7 @@ import {
   contactInputSchema,
   idSchema,
   labelOf,
+  normalizeUrl,
   rateInputSchema,
   todayISO,
   type ApplicationEvent,
@@ -67,12 +68,18 @@ const APP_COLUMNS = columns({
 
 /** Pasos que cuentan como respuesta de la empresa. */
 const RESPONSE_KINDS = `('test_received', 'interview', 'response', 'offer')`;
+/** Estados que solo se alcanzan si la empresa ha contestado. */
+const RESPONDED_STATUSES = `('test', 'interview', 'offer', 'accepted', 'rejected')`;
 
 const APP_SELECT = `SELECT ${selectList(APP_COLUMNS, 'a')}, c.name AS "clientName",
   (SELECT MAX(e.date) FROM job_application_events e WHERE e.application_id = a.id AND e.kind <> 'status') AS "lastEventAt",
   (SELECT COUNT(*) FROM job_application_events e WHERE e.application_id = a.id) AS "eventCount",
-  (SELECT CAST(julianday(MIN(e.date)) - julianday(a.applied_at) AS INTEGER) FROM job_application_events e
-     WHERE e.application_id = a.id AND e.kind IN ${RESPONSE_KINDS} AND a.applied_at IS NOT NULL) AS "firstResponseDays"
+  CASE WHEN a.applied_at IS NOT NULL THEN CAST(julianday(COALESCE(
+    (SELECT MIN(e.date) FROM job_application_events e WHERE e.application_id = a.id AND e.kind IN ${RESPONSE_KINDS}),
+    -- Sin pasos de respuesta, un estado que implica respuesta (rechazo, oferta…) puesto a mano.
+    CASE WHEN a.status IN ${RESPONDED_STATUSES} THEN
+      (SELECT MAX(e.date) FROM job_application_events e WHERE e.application_id = a.id AND e.kind = 'status') END
+  )) - julianday(a.applied_at) AS INTEGER) END AS "firstResponseDays"
   FROM job_applications a LEFT JOIN clients c ON c.id = a.client_id AND c.deleted_at IS NULL`;
 
 const EVENT_SELECT = `SELECT id, application_id AS applicationId, kind, date, time, due_date AS dueDate, notes,
@@ -114,6 +121,8 @@ function nextDates(ctx: AppContext, ids: string[]): Map<string, JobApplication['
 function decode(rows: Record<string, unknown>[], ctx: AppContext): JobApplication[] {
   const apps = rows.map((r) => ({
     ...decodeRow<JobApplication>(APP_COLUMNS, r),
+    // Si el cliente está en la papelera, la candidatura deja de estar enlazada a él.
+    clientId: r.clientName == null ? null : (r.clientId as string | null),
     clientName: (r.clientName as string | null) ?? null,
     lastEventAt: (r.lastEventAt as string | null) ?? null,
     eventCount: Number(r.eventCount ?? 0),
@@ -144,7 +153,7 @@ export function listApplications(ctx: AppContext): JobApplication[] {
 export function listApplicationEvents(ctx: AppContext, applicationId: string): ApplicationEvent[] {
   return ctx.sqlite
     .prepare(
-      `${EVENT_SELECT} WHERE application_id = ? ORDER BY date DESC, COALESCE(time, '') DESC, created_at DESC`,
+      `${EVENT_SELECT} WHERE application_id = ? ORDER BY date DESC, COALESCE(time, '') DESC, created_at DESC, rowid DESC`,
     )
     .all(applicationId) as ApplicationEvent[];
 }
@@ -201,6 +210,8 @@ export function createApplication(ctx: AppContext, raw: unknown): JobApplication
   const max = ctx.sqlite.prepare('SELECT MAX(position) AS p FROM job_applications').get() as {
     p: number | null;
   };
+  // Con fecha de solicitud ya no está solo «Guardada».
+  if (input.appliedAt && input.status === 'saved') input.status = 'applied';
   // Creada ya como solicitada: la fecha de solicitud es hoy si no se indica.
   const appliedAt =
     input.appliedAt ?? (STATUS_ORDER[input.status] >= STATUS_ORDER.applied ? today : null);
@@ -238,6 +249,9 @@ export function updateApplication(ctx: AppContext, id: string, raw: unknown): Jo
   const today = todayISO(ctx.now());
   ctx.sqlite.transaction(() => {
     const values: Record<string, unknown> = { ...patch };
+    // Poner la fecha de solicitud a una candidatura guardada la pasa a «Solicitada».
+    if (patch.appliedAt && !patch.status && before.status === 'saved') patch.status = 'applied';
+    if (patch.status) values.status = patch.status;
     const changed = patch.status && patch.status !== before.status;
     if (changed) {
       values.statusChangedAt = ctx.nowISO();
@@ -251,6 +265,8 @@ export function updateApplication(ctx: AppContext, id: string, raw: unknown): Jo
         values.followUpAt = addDaysISO(today, followUpDays(ctx));
     }
     updateRow(ctx, 'job_applications', APP_COLUMNS, id, values, { what: 'La candidatura' });
+    if (!before.appliedAt && values.appliedAt)
+      insertEvent(ctx, id, { kind: 'applied', date: values.appliedAt as string });
     if (changed)
       insertEvent(ctx, id, {
         kind: 'status',
@@ -272,8 +288,25 @@ export function updateApplication(ctx: AppContext, id: string, raw: unknown): Jo
 }
 
 /**
- * Tras añadir un paso: el estado avanza solo (nunca retrocede) y la fecha de seguimiento se
- * cuenta desde el último paso mientras se espera respuesta.
+ * Fecha de seguimiento: N días después del último paso (o del plazo de entrega de una prueba,
+ * si es posterior) mientras se espera respuesta; sin seguimiento en los demás estados.
+ */
+function followUpFrom(ctx: AppContext, applicationId: string, status: ApplicationStatus) {
+  if (!AWAITING_STATUSES.includes(status)) return null;
+  const last = (
+    ctx.sqlite
+      .prepare(
+        `SELECT MAX(MAX(date), COALESCE(MAX(due_date), '')) AS d FROM job_application_events
+         WHERE application_id = ? AND kind NOT IN ('status', 'note')`,
+      )
+      .get(applicationId) as { d: string | null }
+  ).d;
+  return last ? addDaysISO(last, followUpDays(ctx)) : undefined;
+}
+
+/**
+ * Tras añadir o cambiar un paso: el estado avanza solo (nunca retrocede) y la fecha de
+ * seguimiento se cuenta desde el último paso.
  */
 function afterEvent(ctx: AppContext, applicationId: string, kind: string, date: string) {
   const a = getApplication(ctx, applicationId);
@@ -285,16 +318,14 @@ function afterEvent(ctx: AppContext, applicationId: string, kind: string, date: 
     values.status = target;
     values.statusChangedAt = ctx.nowISO();
   }
+  // Un paso de una candidatura ya presentada: si no constaba la fecha de solicitud, es la más
+  // antigua conocida (para que cuente como presentada).
   if (kind === 'applied' && (!a.appliedAt || date < a.appliedAt)) values.appliedAt = date;
-  if (AWAITING_STATUSES.includes(status) && kind !== 'note') {
-    const last = (
-      ctx.sqlite
-        .prepare(
-          `SELECT MAX(date) AS d FROM job_application_events WHERE application_id = ? AND kind <> 'status' AND kind <> 'note'`,
-        )
-        .get(applicationId) as { d: string | null }
-    ).d;
-    if (last) values.followUpAt = addDaysISO(last, followUpDays(ctx));
+  else if (!a.appliedAt && STATUS_ORDER[status] >= STATUS_ORDER.applied && kind !== 'note')
+    values.appliedAt = date;
+  if (kind !== 'note') {
+    const follow = followUpFrom(ctx, applicationId, status);
+    if (follow !== undefined) values.followUpAt = follow;
   }
   if (Object.keys(values).length)
     updateRow(ctx, 'job_applications', APP_COLUMNS, applicationId, values, {
@@ -318,7 +349,7 @@ export function applicationToClient(ctx: AppContext, id: string): Client {
   let website: string | null = null;
   if (a.url) {
     try {
-      website = new URL(a.url).origin;
+      website = new URL(normalizeUrl(a.url)!).origin;
     } catch {
       website = null;
     }
@@ -458,6 +489,19 @@ export async function applicationRoutes(app: FastifyInstance) {
       .prepare('DELETE FROM job_application_events WHERE id = ? AND application_id = ?')
       .run(eventId, id);
     if (!res.changes) throw new NotFoundError('El paso');
+    const a = getApplication(ctx, id);
+    const follow = followUpFrom(ctx, id, a.status);
+    if (follow !== undefined && follow !== a.followUpAt)
+      updateRow(
+        ctx,
+        'job_applications',
+        APP_COLUMNS,
+        id,
+        { followUpAt: follow },
+        {
+          what: 'La candidatura',
+        },
+      );
     return { ok: true };
   });
 }
@@ -566,7 +610,7 @@ export function applicationReminders(ctx: AppContext): Reminder[] {
       reminders.push({
         key: `application:${a.id}:seguimiento:${a.followUpAt}`,
         title: 'Candidatura sin respuesta',
-        body: `No sabes nada de ${a.company} (${a.title})${since ? ` desde el ${formatDateES(since)}` : ''}. ¿Les escribes para preguntar?`,
+        body: `Sin novedades de ${a.company} (${a.title})${since ? ` desde el ${formatDateES(since)}` : ''}. ¿Les escribes para preguntar?`,
         route,
       });
     }
@@ -598,14 +642,20 @@ export function applicationReminders(ctx: AppContext): Reminder[] {
 
 /** Resumen de la semana para la revisión semanal. */
 export function applicationWeek(ctx: AppContext, from: string, to: string) {
-  const count = (kinds: string) =>
-    (
-      ctx.sqlite
-        .prepare(
-          `SELECT COUNT(*) AS n FROM job_application_events e JOIN job_applications a ON a.id = e.application_id
-           WHERE a.deleted_at IS NULL AND e.kind IN ${kinds} AND e.date BETWEEN ? AND ?`,
-        )
-        .get(from, to) as { n: number }
-    ).n;
-  return { sent: count(`('applied')`), responses: count(RESPONSE_KINDS) };
+  const sent = (
+    ctx.sqlite
+      .prepare(
+        `SELECT COUNT(*) AS n FROM job_applications WHERE deleted_at IS NULL AND applied_at BETWEEN ? AND ?`,
+      )
+      .get(from, to) as { n: number }
+  ).n;
+  const responses = (
+    ctx.sqlite
+      .prepare(
+        `SELECT COUNT(*) AS n FROM job_application_events e JOIN job_applications a ON a.id = e.application_id
+         WHERE a.deleted_at IS NULL AND e.kind IN ${RESPONSE_KINDS} AND e.date BETWEEN ? AND ?`,
+      )
+      .get(from, to) as { n: number }
+  ).n;
+  return { sent, responses };
 }

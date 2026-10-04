@@ -8,7 +8,7 @@ import type {
   Reminder,
   WeeklyReview,
 } from '@l10n/shared';
-import { createTestApp, type TestApp } from './helpers';
+import { createTestApp, multipart, type TestApp } from './helpers';
 
 let t: TestApp;
 let clock = new Date('2026-10-05T10:00:00');
@@ -68,7 +68,10 @@ describe('candidaturas', () => {
       followUpAt: '2026-10-15',
     });
     const events = await req<ApplicationEvent[]>('GET', `/api/job-applications/${a.id}/events`);
-    expect(events.map((e) => [e.kind, e.notes])).toEqual([['status', 'Guardada → Solicitada']]);
+    expect(events.map((e) => [e.kind, e.notes])).toEqual([
+      ['status', 'Guardada → Solicitada'],
+      ['applied', null],
+    ]);
 
     cal = await req<CalendarEvent[]>('GET', '/api/calendar?from=2026-10-01&to=2026-10-31');
     expect(cal.filter((e) => e.kind === 'application').map((e) => e.title)).toEqual([
@@ -275,6 +278,109 @@ describe('candidaturas', () => {
     );
     await req('POST', '/api/trash/restore', { entityType: 'job_application', entityId: a.id });
     expect(await req<JobApplication[]>('GET', '/api/job-applications')).toHaveLength(1);
+  });
+
+  it('estado, fecha de solicitud, seguimiento y respuesta en los casos límite', async () => {
+    // Con fecha de solicitud no se queda en «Guardada».
+    const a = await newApp({ appliedAt: '2026-09-30' });
+    expect(a).toMatchObject({ status: 'applied', followUpAt: '2026-10-10' });
+
+    // De «Guardada» directamente a una entrevista: cuenta como presentada ese día.
+    const b = await newApp({ company: 'Saltos Loc' });
+    await req(
+      'POST',
+      `/api/job-applications/${b.id}/events`,
+      {
+        kind: 'interview',
+        date: '2026-10-02',
+      },
+      201,
+    );
+    expect(await req<JobApplication>('GET', `/api/job-applications/${b.id}`)).toMatchObject({
+      status: 'interview',
+      appliedAt: '2026-10-02',
+    });
+
+    // Prueba con un plazo largo: el seguimiento se cuenta desde la entrega.
+    await req(
+      'POST',
+      `/api/job-applications/${a.id}/events`,
+      {
+        kind: 'test_received',
+        date: '2026-10-05',
+        dueDate: '2026-10-25',
+      },
+      201,
+    );
+    expect((await req<JobApplication>('GET', `/api/job-applications/${a.id}`)).followUpAt).toBe(
+      '2026-11-04',
+    );
+    // Al borrar ese paso, el seguimiento vuelve a contarse desde la solicitud.
+    const evs = await req<ApplicationEvent[]>('GET', `/api/job-applications/${a.id}/events`);
+    const test = evs.find((e) => e.kind === 'test_received')!;
+    await req('DELETE', `/api/job-applications/${a.id}/events/${test.id}`);
+    expect((await req<JobApplication>('GET', `/api/job-applications/${a.id}`)).followUpAt).toBe(
+      '2026-10-10',
+    );
+
+    // Con una oferta, quien contesta eres tú: sin aviso de seguimiento.
+    await req(
+      'POST',
+      `/api/job-applications/${a.id}/events`,
+      {
+        kind: 'offer',
+        date: '2026-10-05',
+      },
+      201,
+    );
+    expect(await req<JobApplication>('GET', `/api/job-applications/${a.id}`)).toMatchObject({
+      status: 'offer',
+      followUpAt: null,
+    });
+
+    // Un rechazo puesto a mano cuenta como respuesta.
+    const c = await newApp({ company: 'Rechazos SA', status: 'applied', appliedAt: '2026-10-01' });
+    const rejected = await req<JobApplication>('PATCH', `/api/job-applications/${c.id}`, {
+      status: 'rejected',
+    });
+    expect(rejected.firstResponseDays).toBe(4);
+
+    // Fecha de solicitud puesta a mano en una guardada: pasa a «Solicitada» y cuenta en la semana.
+    const d = await newApp({ company: 'Manual SL' });
+    expect(
+      await req<JobApplication>('PATCH', `/api/job-applications/${d.id}`, {
+        appliedAt: '2026-10-05',
+      }),
+    ).toMatchObject({ status: 'applied', appliedAt: '2026-10-05' });
+    const review = await req<WeeklyReview>('GET', '/api/review/weekly?week=2026-10-05');
+    expect(review.done.applications.sent).toBe(1);
+  });
+
+  it('si el cliente va a la papelera, la candidatura deja de estar enlazada', async () => {
+    const a = await newApp({ status: 'accepted' });
+    const client = await req<Client>('POST', `/api/job-applications/${a.id}/client`);
+    await req('DELETE', `/api/clients/${client.id}`);
+    expect(await req<JobApplication>('GET', `/api/job-applications/${a.id}`)).toMatchObject({
+      clientId: null,
+      clientName: null,
+    });
+    const again = await req<Client>('POST', `/api/job-applications/${a.id}/client`);
+    expect(again.id).not.toBe(client.id);
+  });
+
+  it('admite adjuntos (CV, carta, prueba)', async () => {
+    const a = await newApp();
+    const res = await t.app.inject({
+      method: 'POST',
+      url: `/api/attachments?entityType=job_application&entityId=${a.id}`,
+      ...multipart([{ filename: 'cv.txt', content: 'Mi CV', type: 'text/plain' }]),
+    });
+    expect(res.statusCode, res.body).toBeLessThan(300);
+    const list = await req<{ fileName: string }[]>(
+      'GET',
+      `/api/attachments?entityType=job_application&entityId=${a.id}`,
+    );
+    expect(list.map((x) => x.fileName)).toEqual(['cv.txt']);
   });
 
   it('valida los datos con mensajes en español', async () => {
