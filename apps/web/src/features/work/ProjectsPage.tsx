@@ -1,11 +1,16 @@
 import { useMemo, useState } from 'react';
 import { useNavigate } from '@tanstack/react-router';
+import { useQueryClient } from '@tanstack/react-query';
+import { toast } from 'sonner';
 import { FolderKanban, Plus, Search } from 'lucide-react';
 import {
   languageOptions,
   PROJECT_STATUSES,
   formatMoney,
+  labelOf,
+  overlapsPeriod,
   pairLabel,
+  plural,
   todayISO,
   type Client,
   type Game,
@@ -27,7 +32,27 @@ import { EntitySelect } from '@/components/common/EntitySelect';
 import { DueLabel, ProjectStatusBadge } from '@/components/common/badges';
 import { EmptyState, Page, PageHeader } from '@/components/layout/PageHeader';
 import { useSettings } from '@/hooks/core';
-import { useApiMutation, useClients, useGames, useProjects, useTemplates } from '@/hooks/work';
+import {
+  useApiMutation,
+  useClients,
+  useGames,
+  useInvalidateWork,
+  useProjects,
+  useTemplates,
+} from '@/hooks/work';
+import {
+  CardGrid,
+  GroupedList,
+  PeriodPicker,
+  StatusBoard,
+  Timeline,
+  ViewSwitcher,
+  usePeriod,
+  usePersistentState,
+  type GroupOption,
+  type ViewKind,
+} from '@/components/views/views';
+import { moneyText, usePeriodJobStats, type PeriodStats } from './JobViews';
 import { api } from '@/lib/api';
 
 export function NewProjectDialog({
@@ -270,14 +295,111 @@ export function ProjectsTable({ projects, filter = '' }: { projects: Project[]; 
   );
 }
 
+const PROJECT_STATUS_COLORS: Record<string, string> = {
+  prospect: '#64748b',
+  active: '#2563eb',
+  paused: '#d97706',
+  completed: '#16a34a',
+  archived: '#475569',
+};
+
+const PROJECT_GROUPS: GroupOption<Project>[] = [
+  { value: 'client', label: 'Cliente', get: (p) => p.clientName },
+  { value: 'game', label: 'Juego', get: (p) => p.gameTitle },
+  { value: 'status', label: 'Estado', get: (p) => labelOf(PROJECT_STATUSES, p.status) },
+];
+
+function ProjectCard({ p, stats }: { p: Project; stats?: PeriodStats }) {
+  return (
+    <>
+      <div className="flex items-start gap-2">
+        {p.color && (
+          <span
+            className="mt-1.5 size-2.5 shrink-0 rounded-full"
+            style={{ backgroundColor: p.color }}
+          />
+        )}
+        <div className="min-w-0 flex-1">
+          <div className="font-medium leading-snug">{p.name}</div>
+          <div className="truncate text-xs text-muted-foreground">
+            {[p.clientName, p.gameTitle, pairLabel(p.sourceLang, p.targetLang)]
+              .filter(Boolean)
+              .join(' · ')}
+          </div>
+        </div>
+      </div>
+      <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-muted-foreground">
+        <span>{plural(stats?.count ?? 0, 'encargo', 'encargos')}</span>
+        {p.openJobCount > 0 && <span>{p.openJobCount} abiertos</span>}
+        {p.nextDueDate && <DueLabel date={p.nextDueDate} />}
+        <span className="ml-auto font-medium text-foreground tabular-nums">
+          {moneyText(stats?.money)}
+        </span>
+      </div>
+    </>
+  );
+}
+
 export function ProjectsPage() {
   const [status, setStatus] = useState('current');
   const [filter, setFilter] = useState('');
   const [open, setOpen] = useState(false);
+  const [layout, setLayout] = usePersistentState<ViewKind>('l10n-view-projects', 'table');
+  const [groupBy, setGroupBy] = usePersistentState('l10n-group-projects', 'client');
+  const { period, setPeriod, range } = usePeriod('projects');
+  const navigate = useNavigate();
+  const qc = useQueryClient();
+  const invalidate = useInvalidateWork();
   const statusQuery =
     status === 'current' ? 'prospect,active,paused' : status === 'all' ? undefined : status;
   const projects = useProjects({ status: statusQuery });
   const all = useProjects();
+  const stats = usePeriodJobStats(range, (j) => j.projectId);
+
+  // En un periodo: solo los proyectos con encargos o fechas en él, con sus cifras del periodo.
+  const list = useMemo(() => {
+    const q = filter.trim().toLowerCase();
+    return (projects.data ?? [])
+      .filter(
+        (p) =>
+          !range ||
+          stats.has(p.id) ||
+          overlapsPeriod(p.startDate, p.endDate ?? p.nextDueDate, range),
+      )
+      .filter(
+        (p) =>
+          !q ||
+          [p.name, p.clientName, p.gameTitle]
+            .filter(Boolean)
+            .some((v) => v!.toLowerCase().includes(q)),
+      )
+      .map((p) => {
+        const s = stats.get(p.id);
+        return {
+          ...p,
+          jobCount: s?.count ?? 0,
+          totalCents: [...(s?.money.values() ?? [])].reduce((a, b) => a + b, 0),
+        };
+      });
+  }, [projects.data, stats, range, filter]);
+
+  const openProject = (p: Project) =>
+    void navigate({ to: '/trabajo/proyectos/$projectId', params: { projectId: p.id } });
+  const move = async (p: Project, to: string) => {
+    qc.setQueriesData<Project[]>({ queryKey: ['projects'] }, (old) =>
+      old?.map((x) => (x.id === p.id ? { ...x, status: to as Project['status'] } : x)),
+    );
+    try {
+      await api(`/projects/${p.id}`, { method: 'PATCH', body: { status: to } });
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : 'No se ha podido cambiar el estado.');
+    }
+    await invalidate();
+  };
+  const totalMoney = new Map<string, number>();
+  for (const p of list)
+    for (const [c, v] of stats.get(p.id)?.money ?? [])
+      totalMoney.set(c, (totalMoney.get(c) ?? 0) + v);
 
   return (
     <Page wide>
@@ -325,8 +447,87 @@ export function ProjectsPage() {
                 className="pl-8"
               />
             </div>
+            <div className="ml-auto flex flex-wrap items-center gap-3">
+              <PeriodPicker period={period} onChange={setPeriod} range={range} />
+              <ViewSwitcher
+                views={['table', 'cards', 'board', 'grouped', 'timeline']}
+                value={layout}
+                onChange={setLayout}
+              />
+            </div>
           </div>
-          <ProjectsTable projects={projects.data ?? []} filter={filter} />
+          {layout === 'cards' ? (
+            <CardGrid
+              items={list}
+              getId={(p) => p.id}
+              onClick={openProject}
+              renderCard={(p) => (
+                <>
+                  <span className="justify-self-start">
+                    <ProjectStatusBadge status={p.status} />
+                  </span>
+                  <ProjectCard p={p} stats={stats.get(p.id)} />
+                </>
+              )}
+              empty="No hay proyectos."
+            />
+          ) : layout === 'board' ? (
+            <StatusBoard
+              items={list}
+              columns={PROJECT_STATUSES.map((s) => ({
+                value: s.value,
+                label: s.label,
+                color: PROJECT_STATUS_COLORS[s.value],
+              }))}
+              getId={(p) => p.id}
+              getStatus={(p) => p.status}
+              renderCard={(p) => <ProjectCard p={p} stats={stats.get(p.id)} />}
+              onMove={(p, s) => void move(p, s)}
+              onOpen={openProject}
+            />
+          ) : layout === 'grouped' ? (
+            <GroupedList
+              items={list}
+              options={PROJECT_GROUPS}
+              groupBy={groupBy}
+              onGroupByChange={setGroupBy}
+              render={(items) => <ProjectsTable projects={items} />}
+              subtotal={(items) => {
+                const m = new Map<string, number>();
+                for (const p of items)
+                  for (const [c, v] of stats.get(p.id)?.money ?? []) m.set(c, (m.get(c) ?? 0) + v);
+                return `${plural(
+                  items.reduce((a, p) => a + p.jobCount, 0),
+                  'encargo',
+                  'encargos',
+                )} · ${moneyText(m)}`;
+              }}
+            />
+          ) : layout === 'timeline' ? (
+            <Timeline
+              items={list}
+              getId={(p) => p.id}
+              getStart={(p) => p.startDate ?? p.createdAt.slice(0, 10)}
+              getEnd={(p) => p.endDate ?? p.nextDueDate ?? p.startDate ?? p.createdAt.slice(0, 10)}
+              getLabel={(p) => p.name}
+              getSublabel={(p) => [p.clientName, p.gameTitle].filter(Boolean).join(' · ')}
+              getColor={(p) => p.color ?? PROJECT_STATUS_COLORS[p.status] ?? null}
+              onOpen={openProject}
+              range={range}
+            />
+          ) : (
+            <ProjectsTable projects={list} />
+          )}
+          <p className="text-sm text-muted-foreground" data-testid="projects-totals">
+            {range ? `${range.label.charAt(0).toUpperCase()}${range.label.slice(1)}: ` : ''}
+            {plural(list.length, 'proyecto', 'proyectos')} ·{' '}
+            {plural(
+              list.reduce((a, p) => a + p.jobCount, 0),
+              'encargo',
+              'encargos',
+            )}{' '}
+            · {moneyText(totalMoney)}
+          </p>
         </div>
       )}
       <NewProjectDialog open={open} onOpenChange={setOpen} />

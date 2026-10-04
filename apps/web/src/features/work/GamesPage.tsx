@@ -1,5 +1,7 @@
 import { useMemo, useState } from 'react';
 import { useNavigate, useParams, useSearch } from '@tanstack/react-router';
+import { useQueryClient } from '@tanstack/react-query';
+import { toast } from 'sonner';
 import { Gamepad2, Plus, Search, Trash2 } from 'lucide-react';
 import {
   BUSINESS_MODELS,
@@ -7,6 +9,7 @@ import {
   GENRE_SUGGESTIONS,
   PLATFORM_SUGGESTIONS,
   labelOf,
+  plural,
   type Game,
 } from '@l10n/shared';
 import { Badge } from '@/components/ui/badge';
@@ -28,9 +31,27 @@ import { CommitInput, DecimalInput } from '@/components/common/inputs';
 import { TagPicker } from '@/components/common/TagPicker';
 import { EmptyState, Page, PageHeader } from '@/components/layout/PageHeader';
 import { useTrashWithUndo } from '@/hooks/mutations';
-import { useApiMutation, useGame, useGames, useJobs, useProjects } from '@/hooks/work';
+import {
+  useApiMutation,
+  useGame,
+  useGames,
+  useInvalidateWork,
+  useJobs,
+  useProjects,
+} from '@/hooks/work';
+import {
+  CardGrid,
+  GroupedList,
+  PeriodPicker,
+  StatusBoard,
+  ViewSwitcher,
+  usePeriod,
+  usePersistentState,
+  type GroupOption,
+  type ViewKind,
+} from '@/components/views/views';
+import { PeriodJobs, moneyText, usePeriodJobStats } from './JobViews';
 import { api } from '@/lib/api';
-import { JobsTable } from './JobsPage';
 import { NewProjectDialog, ProjectsTable } from './ProjectsPage';
 import { TaskListView } from './tasks/TaskListView';
 import { BackLink, FieldGrid, Section, Stat, usePatch } from './shared';
@@ -101,10 +122,85 @@ function ChipsInput({
   );
 }
 
+const GAME_STATUS_COLORS: Record<string, string> = {
+  development: '#d97706',
+  released: '#16a34a',
+  end_of_service: '#475569',
+};
+
+type GameRow = Game & { periodJobs: number; periodMoney: Map<string, number> | undefined };
+
+const GAME_GROUPS: GroupOption<GameRow>[] = [
+  { value: 'status', label: 'Estado', get: (g) => labelOf(GAME_STATUSES, g.status) },
+  { value: 'developer', label: 'Desarrolladora', get: (g) => g.developer },
+  { value: 'platform', label: 'Plataforma', get: (g) => g.platforms },
+  { value: 'genre', label: 'Género', get: (g) => g.genres },
+];
+
+function GameCard({ g }: { g: GameRow }) {
+  return (
+    <>
+      <div>
+        <div className="font-medium leading-snug">{g.title}</div>
+        {g.originalTitle && (
+          <div className="ko text-xs text-muted-foreground" lang="ko">
+            {g.originalTitle}
+          </div>
+        )}
+      </div>
+      <div className="truncate text-xs text-muted-foreground">
+        {[g.developer, g.platforms.join(', ')].filter(Boolean).join(' · ') || '—'}
+      </div>
+      <div className="flex flex-wrap items-center gap-x-3 text-xs text-muted-foreground">
+        <span>{plural(g.periodJobs, 'encargo', 'encargos')}</span>
+        <span className="ml-auto font-medium text-foreground tabular-nums">
+          {moneyText(g.periodMoney)}
+        </span>
+      </div>
+    </>
+  );
+}
+
 export function GamesPage() {
   const games = useGames();
   const navigate = useNavigate();
+  const qc = useQueryClient();
+  const invalidate = useInvalidateWork();
   const [filter, setFilter] = useState('');
+  const [layout, setLayout] = usePersistentState<ViewKind>('l10n-view-games', 'table');
+  const [groupBy, setGroupBy] = usePersistentState('l10n-group-games', 'status');
+  const { period, setPeriod, range } = usePeriod('games');
+  const stats = usePeriodJobStats(range, (j) => j.gameId);
+  const rows = useMemo<GameRow[]>(() => {
+    const q = filter.trim().toLowerCase();
+    return (games.data ?? [])
+      .filter((g) => !range || stats.has(g.id))
+      .filter(
+        (g) =>
+          !q ||
+          [g.title, g.originalTitle, g.developer, ...g.genres, ...g.platforms]
+            .filter(Boolean)
+            .some((v) => v!.toLowerCase().includes(q)),
+      )
+      .map((g) => ({
+        ...g,
+        periodJobs: stats.get(g.id)?.count ?? 0,
+        periodMoney: stats.get(g.id)?.money,
+      }));
+  }, [games.data, stats, range, filter]);
+  const openGame = (g: Game) =>
+    void navigate({ to: '/trabajo/juegos/$gameId', params: { gameId: g.id } });
+  const move = async (g: Game, to: string) => {
+    qc.setQueriesData<Game[]>({ queryKey: ['games'] }, (old) =>
+      old?.map((x) => (x.id === g.id ? { ...x, status: to as Game['status'] } : x)),
+    );
+    try {
+      await api(`/games/${g.id}`, { method: 'PATCH', body: { status: to } });
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : 'No se ha podido cambiar el estado.');
+    }
+    await invalidate();
+  };
   const [open, setOpen] = useState(false);
   const [title, setTitle] = useState('');
   const [originalTitle, setOriginalTitle] = useState('');
@@ -119,7 +215,7 @@ export function GamesPage() {
       },
     },
   );
-  const columns = useMemo<ColumnDef<Game, unknown>[]>(
+  const columns = useMemo<ColumnDef<GameRow, unknown>[]>(
     () => [
       {
         accessorKey: 'title',
@@ -163,9 +259,19 @@ export function GamesPage() {
         cell: ({ row }) => labelOf(GAME_STATUSES, row.original.status),
       },
       { accessorKey: 'projectCount', header: 'Proyectos', meta: { align: 'right' } },
-      { accessorKey: 'jobCount', header: 'Encargos', meta: { align: 'right' } },
+      { accessorKey: 'periodJobs', header: 'Encargos', meta: { align: 'right' } },
+      {
+        id: 'amount',
+        header: 'Importe',
+        meta: { align: 'right' },
+        accessorFn: (g) => [...(g.periodMoney?.values() ?? [])].reduce((a, b) => a + b, 0),
+        cell: ({ row }) => moneyText(row.original.periodMoney),
+      },
     ],
     [],
+  );
+  const table = (items: GameRow[]) => (
+    <DataTable data={items} columns={columns} onRowClick={openGame} testId="games-table" />
   );
   return (
     <Page wide>
@@ -191,23 +297,75 @@ export function GamesPage() {
         />
       ) : (
         <div className="grid gap-3">
-          <div className="relative w-full max-w-xs">
-            <Search className="absolute left-2.5 top-2.5 size-4 text-muted-foreground" />
-            <Input
-              value={filter}
-              onChange={(e) => setFilter(e.target.value)}
-              placeholder="Filtrar…"
-              className="pl-8"
-            />
+          <div className="flex flex-wrap items-center gap-3">
+            <div className="relative w-full max-w-xs">
+              <Search className="absolute left-2.5 top-2.5 size-4 text-muted-foreground" />
+              <Input
+                value={filter}
+                onChange={(e) => setFilter(e.target.value)}
+                placeholder="Filtrar…"
+                className="pl-8"
+              />
+            </div>
+            <div className="ml-auto flex flex-wrap items-center gap-3">
+              <PeriodPicker period={period} onChange={setPeriod} range={range} />
+              <ViewSwitcher
+                views={['table', 'cards', 'board', 'grouped']}
+                value={layout}
+                onChange={setLayout}
+              />
+            </div>
           </div>
-          <DataTable
-            data={games.data ?? []}
-            columns={columns}
-            filter={filter}
-            onRowClick={(g) =>
-              void navigate({ to: '/trabajo/juegos/$gameId', params: { gameId: g.id } })
-            }
-          />
+          {layout === 'cards' ? (
+            <CardGrid
+              items={rows}
+              getId={(g) => g.id}
+              onClick={openGame}
+              renderCard={(g) => (
+                <>
+                  <Badge variant="outline" className="justify-self-start">
+                    {labelOf(GAME_STATUSES, g.status)}
+                  </Badge>
+                  <GameCard g={g} />
+                </>
+              )}
+              empty="No hay juegos."
+            />
+          ) : layout === 'board' ? (
+            <StatusBoard
+              items={rows}
+              columns={GAME_STATUSES.map((s) => ({
+                value: s.value,
+                label: s.label,
+                color: GAME_STATUS_COLORS[s.value],
+              }))}
+              getId={(g) => g.id}
+              getStatus={(g) => g.status}
+              renderCard={(g) => <GameCard g={g} />}
+              onMove={(g, st) => void move(g, st)}
+              onOpen={openGame}
+            />
+          ) : layout === 'grouped' ? (
+            <GroupedList
+              items={rows}
+              options={GAME_GROUPS}
+              groupBy={groupBy}
+              onGroupByChange={setGroupBy}
+              render={table}
+              subtotal={(items) => {
+                const m = new Map<string, number>();
+                for (const g of items)
+                  for (const [c, v] of g.periodMoney ?? []) m.set(c, (m.get(c) ?? 0) + v);
+                return `${plural(
+                  items.reduce((a, g) => a + g.periodJobs, 0),
+                  'encargo',
+                  'encargos',
+                )} · ${moneyText(m)}`;
+              }}
+            />
+          ) : (
+            table(rows)
+          )}
         </div>
       )}
       <Dialog open={open} onOpenChange={setOpen}>
@@ -424,7 +582,7 @@ export function GameDetailPage() {
             <ProjectsTable projects={projects.data ?? []} />
           </Section>
           <Section title="Encargos">
-            <JobsTable jobs={jobs.data ?? []} />
+            <PeriodJobs jobs={jobs.data ?? []} storageKey="game-jobs" showProject />
           </Section>
           <NewProjectDialog
             open={newProject}

@@ -21,11 +21,12 @@ import { AttachmentsPanel } from '@/components/common/AttachmentsPanel';
 import { CommitInput, DecimalInput, DateInput } from '@/components/common/inputs';
 import { TagPicker } from '@/components/common/TagPicker';
 import { Page, PageHeader } from '@/components/layout/PageHeader';
-import { useApiMutation, useClient, useProjects } from '@/hooks/work';
+import { useApiMutation, useClient, useJobs, useProjects } from '@/hooks/work';
 import { useTrashWithUndo } from '@/hooks/mutations';
 import { api } from '@/lib/api';
 import { RatesTable } from './RatesTable';
 import { ClientAccountsPanel } from './ClientAccountsPanel';
+import { PeriodJobs } from './JobViews';
 import { ProjectsTable, NewProjectDialog } from './ProjectsPage';
 import { useClientProfitability } from '@/features/finance/ProfitabilityPanel';
 import { BackLink, FieldGrid, Section, Stat, usePatch } from './shared';
@@ -154,6 +155,7 @@ export function ClientDetailPage() {
   const navigate = useNavigate();
   const q = useClient(clientId);
   const projects = useProjects({ clientId });
+  const clientJobs = useJobs({ clientId });
   const patch = usePatch<{ client: Client }>(
     `/clients/${clientId}`,
     ['client', clientId],
@@ -268,6 +270,9 @@ export function ClientDetailPage() {
             Accesos ({accounts.length})
           </TabsTrigger>
           <TabsTrigger value="proyectos">Proyectos ({client.projectCount})</TabsTrigger>
+          <TabsTrigger value="encargos" data-testid="tab-client-jobs">
+            Encargos
+          </TabsTrigger>
           <TabsTrigger value="adjuntos">Adjuntos</TabsTrigger>
           <TabsTrigger value="notas">Notas</TabsTrigger>
         </TabsList>
@@ -409,6 +414,9 @@ export function ClientDetailPage() {
             onOpenChange={setNewProject}
             defaults={{ clientId: client.id }}
           />
+        </TabsContent>
+        <TabsContent value="encargos">
+          <PeriodJobs jobs={clientJobs.data ?? []} storageKey="client-jobs" showProject />
         </TabsContent>
         <TabsContent value="adjuntos">
           <AttachmentsPanel entityType="client" entityId={client.id} />

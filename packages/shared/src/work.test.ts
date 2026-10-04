@@ -15,6 +15,11 @@ import {
   rawVolume,
   toRateMicros,
   weightedVolume,
+  periodRange,
+  shiftPeriod,
+  jobDate,
+  inPeriod,
+  overlapsPeriod,
 } from './index';
 
 describe('análisis CAT', () => {
@@ -150,5 +155,50 @@ describe('importación', () => {
       externalId: 'Task ID',
       parentExternalId: 'Parent ID',
     });
+  });
+});
+
+describe('periodos', () => {
+  it('calcula el rango y el nombre de cada periodo', () => {
+    expect(periodRange({ kind: 'all', anchor: '2026-10-04' })).toBeNull();
+    expect(periodRange({ kind: 'year', anchor: '2026-10-04' })).toEqual({
+      from: '2026-01-01',
+      to: '2026-12-31',
+      label: '2026',
+    });
+    expect(periodRange({ kind: 'quarter', anchor: '2026-10-04' })).toEqual({
+      from: '2026-10-01',
+      to: '2026-12-31',
+      label: '4.º trimestre de 2026',
+    });
+    expect(periodRange({ kind: 'quarter', anchor: '2026-02-15' })!.label).toBe(
+      '1.er trimestre de 2026',
+    );
+    expect(periodRange({ kind: 'month', anchor: '2028-02-10' })).toEqual({
+      from: '2028-02-01',
+      to: '2028-02-29',
+      label: 'febrero de 2028',
+    });
+  });
+
+  it('se mueve al periodo anterior o siguiente', () => {
+    expect(shiftPeriod({ kind: 'month', anchor: '2026-01-31' }, -1)).toEqual({
+      kind: 'month',
+      anchor: '2025-12-01',
+    });
+    expect(periodRange(shiftPeriod({ kind: 'quarter', anchor: '2026-11-20' }, 1))!.from).toBe(
+      '2027-01-01',
+    );
+  });
+
+  it('fecha de un encargo y pertenencia al periodo', () => {
+    expect(jobDate({ deliveredAt: '2026-03-02', dueDate: '2026-03-05' })).toBe('2026-03-02');
+    expect(jobDate({ dueDate: '2026-03-05', receivedAt: '2026-02-20' })).toBe('2026-03-05');
+    expect(jobDate({ createdAt: '2026-01-10T10:00:00.000Z' })).toBe('2026-01-10');
+    const march = periodRange({ kind: 'month', anchor: '2026-03-15' });
+    expect(inPeriod('2026-03-31', march)).toBe(true);
+    expect(inPeriod('2026-04-01', march)).toBe(false);
+    expect(overlapsPeriod('2026-02-20', '2026-03-02', march)).toBe(true);
+    expect(overlapsPeriod('2026-01-01', '2026-02-28', march)).toBe(false);
   });
 });

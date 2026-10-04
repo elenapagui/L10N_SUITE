@@ -9,6 +9,7 @@ export * from './schemas/core';
 export * from './work/enums';
 export * from './work/cat';
 export * from './work/recurrence';
+export * from './work/period';
 export * from './work/schemas';
 export * from './work/types';
 export * from './import';

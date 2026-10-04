@@ -31,6 +31,14 @@ import { EmptyState, Page, PageHeader } from '@/components/layout/PageHeader';
 import { useApiMutation, useJobs, useProject, useProjects, useTemplates } from '@/hooks/work';
 import { api } from '@/lib/api';
 import { RateHint, useResolvedRate } from './RateHint';
+import { JobsView, filterJobs, jobTotalsText, jobsInPeriod } from './JobViews';
+import {
+  PeriodPicker,
+  ViewSwitcher,
+  usePeriod,
+  usePersistentState,
+  type ViewKind,
+} from '@/components/views/views';
 
 export function NewJobDialog({
   open,
@@ -354,7 +362,7 @@ export function JobsTable({
         accessorFn: (j) => j.weightedVolume ?? j.volume ?? 0,
         cell: ({ row }) => {
           const j = row.original;
-          if (j.volume == null) return '—';
+          if (j.volume == null || j.unit === 'flat') return '—';
           return (
             <span
               title={
@@ -406,6 +414,8 @@ export function JobsPage() {
   const [view, setView] = useState('open');
   const [filter, setFilter] = useState('');
   const [open, setOpen] = useState(false);
+  const [layout, setLayout] = usePersistentState<ViewKind>('l10n-view-jobs', 'table');
+  const { period, setPeriod, range } = usePeriod('jobs');
   const query =
     view === 'open'
       ? { open: true }
@@ -416,6 +426,10 @@ export function JobsPage() {
           : {};
   const jobs = useJobs(query);
   const projects = useProjects();
+  const list = useMemo(
+    () => filterJobs(jobsInPeriod(jobs.data ?? [], range), filter),
+    [jobs.data, range, filter],
+  );
   return (
     <Page wide>
       <PageHeader
@@ -458,8 +472,20 @@ export function JobsPage() {
                 className="pl-8"
               />
             </div>
+            <div className="ml-auto flex flex-wrap items-center gap-3">
+              <PeriodPicker period={period} onChange={setPeriod} range={range} />
+              <ViewSwitcher
+                views={['table', 'cards', 'board', 'grouped', 'timeline']}
+                value={layout}
+                onChange={setLayout}
+              />
+            </div>
           </div>
-          <JobsTable jobs={jobs.data ?? []} filter={filter} />
+          <JobsView jobs={list} view={layout} range={range} storageKey="jobs" />
+          <p className="text-sm text-muted-foreground" data-testid="jobs-totals">
+            {range ? `${range.label.charAt(0).toUpperCase()}${range.label.slice(1)}: ` : ''}
+            {jobTotalsText(list)}
+          </p>
         </div>
       )}
       <NewJobDialog open={open} onOpenChange={setOpen} />

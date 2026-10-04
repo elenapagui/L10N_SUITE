@@ -34,7 +34,8 @@ import {
 import { api } from '@/lib/api';
 import { desktop } from '@/lib/desktop';
 import { formatDuration } from '@/lib/format';
-import { JobsTable, NewJobDialog } from './JobsPage';
+import { NewJobDialog } from './JobsPage';
+import { PeriodJobs } from './JobViews';
 import { NewQueryButton, QueriesTable } from './QueriesPage';
 import { TaskListView } from './tasks/TaskListView';
 import { TimeEntriesList } from './time/TimePage';
@@ -233,12 +234,15 @@ export function ProjectDetailPage() {
           <TabsTrigger value="archivos">Archivos</TabsTrigger>
         </TabsList>
         <TabsContent value="encargos" className="grid gap-3">
-          <div>
-            <Button size="sm" onClick={() => setNewJob(true)} data-testid="project-new-job">
-              <Plus /> Nuevo encargo
-            </Button>
-          </div>
-          <JobsTable jobs={jobs.data ?? []} showProject={false} />
+          <PeriodJobs
+            jobs={jobs.data ?? []}
+            storageKey="project-jobs"
+            actions={
+              <Button size="sm" onClick={() => setNewJob(true)} data-testid="project-new-job">
+                <Plus /> Nuevo encargo
+              </Button>
+            }
+          />
           <NewJobDialog open={newJob} onOpenChange={setNewJob} projectId={p.id} />
         </TabsContent>
         <TabsContent value="tareas">
