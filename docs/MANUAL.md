@@ -95,6 +95,11 @@ Lo que borras va a la **Papelera**, donde se guarda 30 días. Justo después de 
 ## Trabajo: clientes, juegos, proyectos y encargos
 
 - **Clientes:** datos fiscales, condiciones (moneda, plazo de pago, IVA, IRPF), contactos, NDA, plataforma del cliente y **tarifas**. En «Datos» puedes ajustar la **rejilla de coincidencias del CAT**, es decir, cuánto paga el cliente por cada banda (100 %, 95–99 %…).
+  - **Accesos:** en la pestaña «Accesos» guardas el servidor de memoQ (o de Trados, Phrase, XTM, Smartcat, Crowdin…), el usuario y la contraseña. Puedes añadir varios por cliente (por ejemplo, un usuario por proyecto). La contraseña está oculta hasta que pulsas el ojo, y los botones copian el servidor, el usuario o la contraseña. La búsqueda encuentra el servidor y el usuario, nunca la contraseña.
+
+    **Atención:** las contraseñas se guardan **sin cifrar** en tus datos, y también en las copias de seguridad y en la carpeta de sincronización. No las guardes si alguien más tiene acceso a esas carpetas.
+
+  - **Encargos:** la pestaña «Encargos» reúne todos los del cliente, con periodos y vistas (más abajo).
 - **Juegos:** la ficha central del juego (títulos KO/ES/EN, desarrolladora, géneros, plataformas, modelo de negocio…). Desde ella ves sus proyectos, encargos y tareas.
 - **Proyectos:** reúnen cliente, juego y par de idiomas (coreano, español o inglés). Puedes asociarles una carpeta del ordenador y abrirla con un clic. Si cambias el cliente o los idiomas, la app te propone poner la tarifa nueva en los encargos que aún no has facturado.
 - **Encargos (lotes):** cada parche, evento, DLC o ficha de tienda. Al crearlo:
@@ -103,7 +108,18 @@ Lo que borras va a la **Papelera**, donde se guarda 30 días. Justo después de 
   - **si aparece «Sin tarifa»**, la app explica por qué: el cliente no tiene tarifa para ese servicio, la que tiene es para otro par de idiomas o por otra unidad, el proyecto no tiene cliente o hay dos clientes con el mismo nombre y la tarifa está en el otro. Debajo verás las tarifas más parecidas con el botón **Usar esta tarifa**, que también pone la unidad;
   - con **Análisis por coincidencias** introduces el recuento por bandas o lo pegas desde Excel o desde el informe del CAT; la app calcula el volumen ponderado y el importe;
   - puedes fijar el importe a mano;
+  - **hora de entrega:** al poner la fecha de entrega, la hora se rellena sola con **23:59**. Junto a la hora, el botón «23:59» la vuelve a poner y la cruz la quita. Puedes cambiar la hora habitual (o dejarla vacía para que no se rellene) en **Ajustes → Preferencias → Hora de entrega habitual**. En las tareas, el botón está junto a la hora, pero no se rellena sola;
   - la plantilla «Encargo estándar» crea las tareas habituales (traducir, consultas, QA con checklist, entregar, registrar para facturar) con fechas relativas a la entrega.
+- **Vistas:** en Encargos, Proyectos, Juegos y Clientes, los botones de arriba a la derecha cambian la forma de verlos. La app recuerda la elección de cada página.
+  - **Tabla:** la de siempre.
+  - **Tarjetas:** una tarjeta por ficha, con el estado, la entrega y el importe.
+  - **Tablero:** columnas por estado (en encargos, proyectos y juegos). Arrastra una tarjeta a otra columna para cambiar su estado.
+  - **Agrupada:** por cliente, proyecto, juego, estado o facturación (según la página), con el número, el volumen y el importe de cada grupo. Pulsa un grupo para plegarlo.
+  - **Línea de tiempo:** una barra por encargo o proyecto, desde que lo recibes hasta la entrega, con la línea de hoy. Se ve por semanas o por meses.
+- **Periodos:** el selector **Total · Año · Trimestre · Mes** muestra solo lo de ese periodo, con las flechas para ir al anterior o al siguiente y **Hoy** para volver al actual.
+  - En **Encargos**, filtra por la fecha del encargo: la de entrega real, si no la prevista y, si no, la de recepción. El pie suma los encargos, el volumen y el importe del periodo.
+  - En **Proyectos, Juegos y Clientes**, las columnas de importe y encargos cuentan solo los del periodo.
+  - Dentro de un **proyecto, cliente o juego**, el periodo cambia la lista de encargos y las cifras: encargos, volumen, importe, horas registradas y €/hora.
 - **Consultas al cliente:** registra cada duda (ID de cadena, texto origen, pregunta y respuesta) y expórtalas a Excel para enviarlas.
 
 ## Tareas
@@ -138,7 +154,20 @@ La app **no emite facturas**: las emites con tu programa de facturación (o tu g
   - **Resumen para facturar** descarga un Excel con los encargos, volúmenes e importes para copiarlos en tu programa. Lleva el aviso «No es una factura».
   - **Registrar factura** guarda el número, la fecha, los encargos incluidos y otros conceptos (recargos, gestión de terminología…). El IVA, el IRPF y el vencimiento salen de la ficha del cliente o, si no los tiene, de **Ajustes**. Si la moneda no es la principal, indica el tipo de cambio que aplicas.
 - **Facturación → Facturas:** al abrir una factura puedes marcarla como cobrada (con la fecha de cobro), adjuntar su PDF, descargar el resumen o anularla. Al anularla, sus encargos vuelven a «Por facturar». Las facturas vencidas aparecen en rojo, en el inicio y como aviso.
-- **Gastos:** concepto, fecha, proveedor, categoría, base, IVA soportado y si es deducible. Después de guardar puedes adjuntar el justificante.
+- **Gastos:** concepto, fecha, proveedor, categoría, base, IVA soportado, si es deducible y el **banco** del que sale (por defecto, tu cuenta principal). Después de guardar puedes adjuntar el justificante. Con el filtro de arriba ves los gastos de un banco o los **pendientes de cargar**.
+- **Gastos recurrentes** (pestaña «Recurrentes»): el dominio cada año, Netflix cada mes, la cuota de autónomos…
+  - Créalos con **Nuevo gasto recurrente** (concepto, importe, IVA, banco, frecuencia y primer cargo), o marca **Se repite** al apuntar un gasto: ese será el primero de la serie.
+  - Frecuencias: cada semana, mes, trimestre o año (o cada 2, 3… de ellas). Si el cargo es el día 31, en los meses más cortos se apunta el último día y luego vuelve al 31.
+  - **La app los apunta sola** el día que tocan, aunque haya estado cerrada: al abrirla se apuntan los pendientes. Te avisa con «Gasto recurrente apuntado». Cada gasto apuntado lleva un icono que enlaza con su serie.
+  - En moneda extranjera, cada gasto usa el tipo de cambio del anterior de la serie. Revísalo si ha cambiado.
+  - **Pausar** detiene la serie. Al reanudarla, no se apuntan los cargos del tiempo en pausa. Si rellenas «Hasta», deja de apuntarse después de esa fecha.
+- **Bancos** (**Finanzas → Bancos**): una tarjeta por cuenta con el banco, el nombre que le des, el número de cuenta (oculto salvo los últimos dígitos; el ojo lo muestra y el botón lo copia), el saldo con su fecha y lo **pendiente de cargar**.
+  - **El saldo es manual.** **Actualizar saldo** pone lo que dice tu banco en una fecha.
+  - Los gastos asociados a una cuenta **no se restan solos**: pulsa **Cargar** (en la lista de gastos o en la ficha de la cuenta) cuando te los cobren. Así, si actualizas el saldo cuando el cargo ya está hecho, no se descuenta dos veces: deja ese gasto sin cargar.
+  - La flecha junto a «Cargado el…» **deshace el cargo** y devuelve el importe. Si cambias el importe o el banco de un gasto ya cargado, la app rehace el cargo, y si lo envías a la papelera devuelve el importe.
+  - Solo se puede cargar un gasto en la moneda de la cuenta. Si te lo cobran en otra moneda, actualiza el saldo a mano.
+  - En la ficha de la cuenta ves los gastos pendientes y el **historial de movimientos** (saldos actualizados, cargos y cargos deshechos).
+  - Una cuenta es la **principal**: es la que se propone al apuntar un gasto.
 - **Informes → Previsión de cobros:** lo que esperas cobrar a partir de hoy (con IVA e IRPF):
   - lo **vencido sin cobrar**, lo que entrará en los **próximos 30 días** y el total pendiente;
   - un gráfico por mes con las facturas emitidas (en su vencimiento) y los encargos aún sin facturar. Para estos, la app supone que los facturas a fin del mes de entrega y que el cliente paga en su plazo;

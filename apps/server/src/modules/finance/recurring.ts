@@ -20,6 +20,7 @@ import { NotFoundError } from '../../lib/errors';
 import { newId } from '../../lib/ids';
 import { assertExists, columns, decodeRow, insertRow, selectList, updateRow } from '../../lib/sql';
 import { parse } from '../../lib/validate';
+import { getSettings } from '../../services/settings';
 import { moveToTrash, registerTrashable } from '../../services/trash';
 import { getExpense, indexExpense } from './expenses';
 
@@ -102,6 +103,40 @@ export function advance(
 }
 
 /**
+ * Primera fecha de la serie que no ha pasado (hoy incluido), sin apuntar las de en medio: al
+ * reanudar una suscripción pausada no se apuntan los meses en que estuvo pausada.
+ */
+function skipToToday(ctx: AppContext, id: string): void {
+  const r = getRecurring(ctx, id);
+  const today = todayISO(ctx.now());
+  let next = r.nextDate;
+  let dayOfMonth = r.dayOfMonth ?? Number(r.startDate.slice(8, 10));
+  for (let guard = 0; guard < 2000 && next < today; guard++) {
+    const step = advance(next, { ...r, dayOfMonth });
+    next = step.next;
+    dayOfMonth = step.dayOfMonth ?? dayOfMonth;
+  }
+  if (next === r.nextDate) return;
+  ctx.sqlite
+    .prepare(
+      'UPDATE recurring_expenses SET next_date = ?, day_of_month = ?, updated_at = ? WHERE id = ?',
+    )
+    .run(next, dayOfMonth, ctx.nowISO(), id);
+}
+
+/** Cambio del último gasto de la serie (en moneda extranjera); si no hay, 1. */
+function lastExchangeRate(ctx: AppContext, id: string, currency: string): number {
+  if (currency === getSettings(ctx).preferences.baseCurrency) return 1;
+  const row = ctx.sqlite
+    .prepare(
+      `SELECT exchange_rate AS rate FROM expenses WHERE recurring_id = ? AND currency = ?
+       ORDER BY date DESC, created_at DESC LIMIT 1`,
+    )
+    .get(id, currency) as { rate: number } | undefined;
+  return row?.rate ?? 1;
+}
+
+/**
  * Apunta los gastos recurrentes que ya tocan (hasta hoy), aunque la app haya estado cerrada
  * varios periodos. Es idempotente: cada gasto apuntado avanza la fecha del siguiente.
  */
@@ -120,6 +155,7 @@ export function generateRecurringExpenses(ctx: AppContext): number {
       const r = getRecurring(ctx, id);
       let next = r.nextDate;
       let dayOfMonth = r.dayOfMonth ?? Number(r.startDate.slice(8, 10));
+      const rate = lastExchangeRate(ctx, r.id, r.currency);
       for (
         let guard = 0;
         guard < 400 && next <= today && (!r.endDate || next <= r.endDate);
@@ -137,7 +173,7 @@ export function generateRecurringExpenses(ctx: AppContext): number {
           .prepare(
             `INSERT INTO expenses (id, date, supplier, concept, category, currency, exchange_rate, base_cents,
                vat_pct, vat_cents, total_cents, deductible, notes, bank_account_id, recurring_id, created_at, updated_at)
-             VALUES (?, ?, ?, ?, ?, ?, 1, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
           )
           .run(
             expenseId,
@@ -146,6 +182,7 @@ export function generateRecurringExpenses(ctx: AppContext): number {
             r.concept,
             r.category,
             r.currency,
+            rate,
             r.baseCents,
             r.vatPct,
             vatCents,
@@ -201,6 +238,7 @@ export function registerRecurringEntity(): void {
     type: 'recurring_expense',
     table: 'recurring_expenses',
     titleSql: 'concept',
+    onRestore: (ctx, id) => skipToToday(ctx, id),
   });
 }
 
@@ -252,9 +290,13 @@ export async function recurringRoutes(app: FastifyInstance) {
       values.nextDate = patch.startDate;
       values.dayOfMonth = Number(patch.startDate.slice(8, 10));
     }
-    updateRow(ctx, 'recurring_expenses', REC_COLUMNS, id, values, {
-      what: 'El gasto recurrente',
-    });
+    ctx.sqlite.transaction(() => {
+      updateRow(ctx, 'recurring_expenses', REC_COLUMNS, id, values, {
+        what: 'El gasto recurrente',
+      });
+      // Al reanudarla no se apuntan los cargos del tiempo en pausa.
+      if (patch.active === true && !current.active && !patch.nextDate) skipToToday(ctx, id);
+    })();
     generateRecurringExpenses(ctx);
     return getRecurring(ctx, id);
   });

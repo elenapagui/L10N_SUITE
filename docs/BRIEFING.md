@@ -38,13 +38,15 @@ Panel del día con las tareas de hoy y las vencidas, las entregas de los próxim
 
 ### 4.2 Trabajo (sustituye a ClickUp)
 
-- **Clientes**: tipo (agencia, estudio, editora o particular), datos fiscales, moneda, condiciones de pago, contactos (PM, revisión, finanzas), NDA con su archivo, plataforma o CAT del cliente y notas. Cada cliente tiene estadísticas de facturación, volumen y días medios de cobro.
+- **Clientes**: tipo (agencia, estudio, editora o particular), datos fiscales, moneda, condiciones de pago, contactos (PM, revisión, finanzas), NDA con su archivo, plataforma o CAT del cliente y notas. Cada cliente tiene estadísticas de facturación, volumen y días medios de cobro, y sus **accesos** (servidor de memoQ u otra herramienta, usuario y contraseña; varios por cliente, guardados sin cifrar).
 - **Tarifas**: por cliente, servicio (traducción, revisión, LQA, transcreación, MTPE, subtitulado, terminología…) y par de idiomas. La unidad puede ser la palabra, el **carácter** (lo habitual con el coreano de origen), la hora, el minuto o una tarifa plana, con mínimo y rejilla de descuentos por coincidencias del CAT.
 - **Juegos**: es la ficha central. Recoge los títulos KO/ES/EN, la desarrolladora, la editora, el año, los géneros, las plataformas, el modelo de negocio (premium, F2P, gacha, live service), el PEGI y el estado (en desarrollo, publicado, cierre de servicio). Tiene pestañas de proyectos, recursos, corpus, publicaciones y notas.
 - **Proyectos y encargos**: un proyecto reúne cliente, juego y par de idiomas. Dentro van los encargos o lotes (parches, eventos, DLC, ficha de tienda…), algo muy habitual en los juegos como servicio coreanos. Cada encargo tiene:
   - servicio, n.º de pedido (PO), tipo de contenido (UI, diálogo, objetos y habilidades, marketing, notas de parche…), fechas y estado;
   - volumen o análisis CAT por bandas, del que salen el volumen ponderado y el importe;
-  - estado de facturación, checklist de entrega y un botón para abrir la carpeta local del proyecto.
+  - estado de facturación, checklist de entrega y un botón para abrir la carpeta local del proyecto;
+  - hora de entrega que se rellena sola con la habitual (23:59, configurable).
+- **Vistas y periodos**: encargos, proyectos, juegos y clientes se ven en tabla, tarjetas, tablero por estado, agrupados con subtotales o en línea de tiempo. Un selector de periodo (total, año, trimestre, mes) limita las listas y las cifras, también dentro de cada proyecto, cliente o juego.
 - **Tareas**:
   - Se organizan en áreas (Trabajo, Académico, Corpus, Administración, Personal) y listas.
   - Admiten subtareas, checklists, prioridad, estados personalizables, fecha y hora, estimación, etiquetas, adjuntos y comentarios.
@@ -62,7 +64,9 @@ Panel del día con las tareas de hoy y las vencidas, las entregas de los próxim
   - eliges los encargos pendientes de un cliente y se crea el registro: número, fecha, base, IVA, IRPF, total, moneda, tipo de cambio y vencimiento según las condiciones del cliente;
   - adjuntas el PDF de la factura;
   - puedes generar un «Resumen para facturar» en Excel o PDF (no es una factura) para copiar los datos en tu programa.
-- **Gastos**: categoría, IVA soportado, si son deducibles y su justificante.
+- **Gastos**: categoría, IVA soportado, si son deducibles, su justificante y el banco del que salen.
+- **Gastos recurrentes**: semanales, mensuales, trimestrales o anuales; la app los apunta sola el día que tocan.
+- **Bancos**: cuentas con número, banco y saldo manual. Un botón «Cargar» resta cada gasto del saldo cuando se cobra, con historial de movimientos.
 - **Informes**:
   - ingresos por mes, trimestre y año, por cliente, juego, servicio y par de idiomas;
   - antigüedad de los cobros pendientes, tarifa efectiva y volumen por mes;
@@ -190,8 +194,8 @@ Panel del día con las tareas de hoy y las vencidas, las entregas de los próxim
 ## 7. Modelo de datos (resumen)
 
 - **Común**: `settings`, `areas`, `tags`/`taggings`, `attachments`, `links` (vínculos y menciones), `activity_log`, `import_batches` y `deleted_at` para la papelera.
-- **Trabajo**: `clients`, `contacts`, `rates` (con rejilla de coincidencias), `games`, `projects`, `jobs` (encargos, con `cat_analysis`), `task_statuses`, `task_lists`, `tasks` (con `parent_id`, recurrencia y vínculos), `checklist_items`, `comments`, `time_entries`, `client_queries`, `templates`.
-- **Finanzas**: `invoices` (registro), `invoice_jobs`, `expenses`, `exchange_rates`.
+- **Trabajo**: `clients`, `contacts`, `client_accounts`, `rates` (con rejilla de coincidencias), `games`, `projects`, `jobs` (encargos, con `cat_analysis`), `task_statuses`, `task_lists`, `tasks` (con `parent_id`, recurrencia y vínculos), `checklist_items`, `comments`, `time_entries`, `client_queries`, `templates`.
+- **Finanzas**: `invoices` (registro), `invoice_jobs`, `expenses`, `exchange_rates`, `bank_accounts`, `bank_movements`, `recurring_expenses`.
 - **Conocimiento**: `pages` (árbol, con el contenido en JSON y en texto plano para la búsqueda), `page_revisions`, `glossary_terms`, `characters`, `custom_tables`, `custom_columns`, `custom_rows` (valores en JSON), `custom_views`.
 - **Corpus**: `corpus_profiles` (1:1 con `games`), `corpus_documents`, `segments`, `segment_texts` (una fila por idioma, con índice FTS), `annotation_tags` (árbol), `annotations`, `corpus_versions`, `saved_searches`.
 - **Académico**: `publications`, `publication_authors`, `submissions`, `publication_files`, `journals`, `references` (CSL-JSON y campos indexados), `reference_notes`, `quotes`, `collections`.

@@ -156,4 +156,32 @@ describe('bancos', () => {
     expect(hit.subtitle).toContain('ES12 •••• 9012');
     expect(JSON.stringify(found)).not.toContain('3456 7890');
   });
+
+  it('si se borra la principal, otra pasa a serlo; al restaurarla vuelve como secundaria', async () => {
+    const a = await bank({ name: 'A' });
+    const b = await bank({ name: 'B' });
+    await req('DELETE', `/api/bank-accounts/${a.id}`);
+    expect((await req<BankAccount>('GET', `/api/bank-accounts/${b.id}`)).isDefault).toBe(true);
+    await req('POST', '/api/trash/restore', { entityType: 'bank_account', entityId: a.id });
+    const all = await req<BankAccount[]>('GET', '/api/bank-accounts');
+    expect(all.filter((x) => x.isDefault).map((x) => x.name)).toEqual(['B']);
+  });
+
+  it('un gasto en la papelera no se puede cargar', async () => {
+    const acc = await bank();
+    const e = await req<Expense>(
+      'POST',
+      '/api/expenses',
+      {
+        date: '2026-10-01',
+        concept: 'Borrado',
+        baseCents: 1_000,
+        vatPct: 0,
+        bankAccountId: acc.id,
+      },
+      201,
+    );
+    await req('DELETE', `/api/expenses/${e.id}`);
+    await req('POST', `/api/expenses/${e.id}/charge`, undefined, 404);
+  });
 });

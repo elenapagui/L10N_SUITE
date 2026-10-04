@@ -174,4 +174,73 @@ describe('gastos recurrentes', () => {
     });
     expect(moved.nextDate).toBe('2026-02-20');
   });
+
+  it('al reanudar o restaurar no se apuntan los cargos del tiempo en pausa', async () => {
+    const r = await req<RecurringExpense>(
+      'POST',
+      '/api/recurring-expenses',
+      {
+        concept: 'Spotify',
+        baseCents: 1_000,
+        vatPct: 0,
+        frequency: 'monthly',
+        startDate: '2026-01-31',
+      },
+      201,
+    );
+    await req('PATCH', `/api/recurring-expenses/${r.id}`, { active: false });
+    clock = new Date('2026-04-15T09:00:00');
+    expect(await dates('Spotify')).toEqual(['2026-01-31']);
+    const resumed = await req<RecurringExpense>('PATCH', `/api/recurring-expenses/${r.id}`, {
+      active: true,
+    });
+    expect(resumed.nextDate).toBe('2026-04-30');
+    expect(await dates('Spotify')).toEqual(['2026-01-31']);
+
+    await req('DELETE', `/api/recurring-expenses/${r.id}`);
+    clock = new Date('2026-07-10T09:00:00');
+    await req('POST', '/api/trash/restore', { entityType: 'recurring_expense', entityId: r.id });
+    expect((await req<RecurringExpense[]>('GET', '/api/recurring-expenses'))[0]!.nextDate).toBe(
+      '2026-07-31',
+    );
+    expect(await dates('Spotify')).toEqual(['2026-01-31']);
+  });
+
+  it('en moneda extranjera usa el cambio del último gasto de la serie', async () => {
+    const res = await t.app.inject({
+      method: 'POST',
+      url: '/api/expenses',
+      payload: {
+        date: '2026-01-31',
+        concept: 'Dominio',
+        currency: 'USD',
+        exchangeRate: 0.9,
+        baseCents: 2_000,
+        vatPct: 0,
+      },
+    });
+    const first = res.json() as Expense;
+    await req(
+      'POST',
+      '/api/recurring-expenses',
+      {
+        concept: 'Dominio',
+        currency: 'USD',
+        baseCents: 2_000,
+        vatPct: 0,
+        frequency: 'monthly',
+        startDate: '2026-01-31',
+        fromExpenseId: first.id,
+      },
+      201,
+    );
+    clock = new Date('2026-02-28T09:00:00');
+    const list = (await req<Expense[]>('GET', '/api/expenses')).filter(
+      (e) => e.concept === 'Dominio',
+    );
+    expect(list.map((e) => [e.date, e.exchangeRate]).sort()).toEqual([
+      ['2026-01-31', 0.9],
+      ['2026-02-28', 0.9],
+    ]);
+  });
 });

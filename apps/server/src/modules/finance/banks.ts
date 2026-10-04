@@ -128,13 +128,14 @@ interface ExpenseRow {
   totalCents: number;
   bankAccountId: string | null;
   chargedAt: string | null;
+  deletedAt: string | null;
 }
 
 function expenseRow(ctx: AppContext, id: string): ExpenseRow {
   const row = ctx.sqlite
     .prepare(
       `SELECT id, concept, currency, total_cents AS totalCents, bank_account_id AS bankAccountId,
-         charged_at AS chargedAt FROM expenses WHERE id = ?`,
+         charged_at AS chargedAt, deleted_at AS deletedAt FROM expenses WHERE id = ?`,
     )
     .get(id) as ExpenseRow | undefined;
   if (!row) throw new NotFoundError('El gasto');
@@ -145,6 +146,7 @@ function expenseRow(ctx: AppContext, id: string): ExpenseRow {
 export function chargeExpense(ctx: AppContext, expenseId: string): void {
   ctx.sqlite.transaction(() => {
     const e = expenseRow(ctx, expenseId);
+    if (e.deletedAt) throw new NotFoundError('El gasto');
     if (e.chargedAt) throw new ValidationError('Este gasto ya está cargado.');
     if (!e.bankAccountId) throw new ValidationError('Elige antes el banco del gasto.');
     const account = getBankAccount(ctx, e.bankAccountId);
@@ -200,7 +202,30 @@ export function registerBankEntity(): void {
     type: 'bank_account',
     table: 'bank_accounts',
     titleSql: 'name',
-    onRestore: (ctx, id) => indexBank(ctx, getBankAccount(ctx, id)),
+    // Si se va la cuenta principal, pasa a serlo otra activa.
+    onTrash: (ctx) => {
+      const hasDefault = ctx.sqlite
+        .prepare('SELECT 1 FROM bank_accounts WHERE deleted_at IS NULL AND is_default = 1')
+        .get();
+      if (hasDefault) return;
+      const next = ctx.sqlite
+        .prepare(
+          'SELECT id FROM bank_accounts WHERE deleted_at IS NULL ORDER BY active DESC, created_at LIMIT 1',
+        )
+        .get() as { id: string } | undefined;
+      if (next)
+        ctx.sqlite.prepare('UPDATE bank_accounts SET is_default = 1 WHERE id = ?').run(next.id);
+    },
+    onRestore: (ctx, id) => {
+      // Vuelve como secundaria si ya hay otra principal.
+      ctx.sqlite
+        .prepare(
+          `UPDATE bank_accounts SET is_default = 0 WHERE id = ? AND EXISTS
+             (SELECT 1 FROM bank_accounts WHERE id <> ? AND deleted_at IS NULL AND is_default = 1)`,
+        )
+        .run(id, id);
+      indexBank(ctx, getBankAccount(ctx, id));
+    },
   });
 }
 
