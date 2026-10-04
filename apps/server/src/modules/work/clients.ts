@@ -4,6 +4,8 @@ import {
   CLIENT_KINDS,
   SERVICES,
   UNITS,
+  clientAccountInputSchema,
+  clientAccountUpdateSchema,
   clientInputSchema,
   clientUpdateSchema,
   contactInputSchema,
@@ -14,6 +16,7 @@ import {
   rateInputSchema,
   rateUpdateSchema,
   type Client,
+  type ClientAccount,
   type Contact,
   type Rate,
 } from '@l10n/shared';
@@ -91,14 +94,59 @@ const CLIENT_SELECT = `SELECT ${selectList(CLIENT_COLUMNS, 'c')},
      WHERE p.client_id = c.id AND j.deleted_at IS NULL) AS "lastJobAt"
   FROM clients c`;
 
-function indexClient(ctx: AppContext, c: Client) {
+export function indexClient(ctx: AppContext, c: Client) {
+  // Los servidores y usuarios de sus herramientas también se buscan; las contraseñas, nunca.
+  const accounts = ctx.sqlite
+    .prepare('SELECT server_url AS url, username AS user FROM client_accounts WHERE client_id = ?')
+    .all(c.id) as { url: string | null; user: string | null }[];
   indexEntity(ctx, {
     entityType: 'client',
     entityId: c.id,
     title: c.name,
     subtitle: [labelOf(CLIENT_KINDS, c.kind), c.country].filter(Boolean).join(' · '),
-    text: [c.legalName, c.taxId, c.email, c.platform, c.notes].filter(Boolean).join(' '),
+    text: [
+      c.legalName,
+      c.taxId,
+      c.email,
+      c.platform,
+      c.notes,
+      ...accounts.flatMap((a) => [a.url, a.user]),
+    ]
+      .filter(Boolean)
+      .join(' '),
   });
+}
+
+const ACCOUNT_COLUMNS = columns({
+  id: 'id',
+  clientId: 'client_id',
+  tool: 'tool',
+  label: 'label',
+  serverUrl: 'server_url',
+  username: 'username',
+  password: 'password',
+  notes: 'notes',
+  sortOrder: 'sort_order',
+  createdAt: 'created_at',
+  updatedAt: 'updated_at',
+});
+
+export function listClientAccounts(ctx: AppContext, clientId: string): ClientAccount[] {
+  return (
+    ctx.sqlite
+      .prepare(
+        `SELECT ${selectList(ACCOUNT_COLUMNS, 'a')} FROM client_accounts a WHERE a.client_id = ? ORDER BY a.sort_order, a.created_at`,
+      )
+      .all(clientId) as Record<string, unknown>[]
+  ).map((r) => decodeRow<ClientAccount>(ACCOUNT_COLUMNS, r));
+}
+
+function getClientAccount(ctx: AppContext, id: string): ClientAccount {
+  const row = ctx.sqlite
+    .prepare(`SELECT ${selectList(ACCOUNT_COLUMNS, 'a')} FROM client_accounts a WHERE a.id = ?`)
+    .get(id);
+  if (!row) throw new NotFoundError('El acceso');
+  return decodeRow<ClientAccount>(ACCOUNT_COLUMNS, row as Record<string, unknown>);
 }
 
 export function getClient(ctx: AppContext, id: string): Client {
@@ -349,7 +397,52 @@ export async function clientRoutes(app: FastifyInstance) {
       client: getClient(ctx, id),
       contacts: listContacts(ctx, id),
       rates: listRates(ctx, id),
+      accounts: listClientAccounts(ctx, id),
     };
+  });
+
+  app.get('/api/clients/:id/accounts', async (req) => {
+    const { id } = parse(idParam, req.params);
+    getClient(ctx, id);
+    return listClientAccounts(ctx, id);
+  });
+  app.post('/api/client-accounts', async (req, reply) => {
+    const input = parse(clientAccountInputSchema, req.body);
+    const client = getClient(ctx, input.clientId);
+    const max = ctx.sqlite
+      .prepare('SELECT MAX(sort_order) AS m FROM client_accounts WHERE client_id = ?')
+      .get(input.clientId) as { m: number | null };
+    const id = insertRow(ctx, 'client_accounts', ACCOUNT_COLUMNS, {
+      ...input,
+      sortOrder: (max.m ?? 0) + 1,
+    });
+    indexClient(ctx, client);
+    reply.code(201);
+    return getClientAccount(ctx, id);
+  });
+  app.patch('/api/client-accounts/:id', async (req) => {
+    const { id } = parse(idParam, req.params);
+    const current = getClientAccount(ctx, id);
+    updateRow(
+      ctx,
+      'client_accounts',
+      ACCOUNT_COLUMNS,
+      id,
+      parse(clientAccountUpdateSchema, req.body),
+      {
+        what: 'El acceso',
+        softDelete: false,
+      },
+    );
+    indexClient(ctx, getClient(ctx, current.clientId));
+    return getClientAccount(ctx, id);
+  });
+  app.delete('/api/client-accounts/:id', async (req) => {
+    const { id } = parse(idParam, req.params);
+    const current = getClientAccount(ctx, id);
+    ctx.sqlite.prepare('DELETE FROM client_accounts WHERE id = ?').run(id);
+    indexClient(ctx, getClient(ctx, current.clientId));
+    return { ok: true };
   });
 
   app.post('/api/clients', async (req, reply) => {

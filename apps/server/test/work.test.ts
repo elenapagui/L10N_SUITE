@@ -1,6 +1,15 @@
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import ExcelJS from 'exceljs';
-import type { Client, Game, Job, Project, Task, TaskStatus, TimeEntry } from '@l10n/shared';
+import type {
+  Client,
+  Game,
+  Job,
+  Project,
+  Task,
+  TaskStatus,
+  TimeEntry,
+  ClientAccount,
+} from '@l10n/shared';
 import { createTestApp, type TestApp } from './helpers';
 
 let t: TestApp;
@@ -77,6 +86,40 @@ describe('clientes, contactos y tarifas', () => {
     expect(await names('/api/clients?includeInactive=0')).toEqual(['Agencia activa']);
     const res = await t.app.inject('/api/clients?includeInactive=quizá');
     expect(res.statusCode).toBe(400);
+  });
+
+  it('guarda varios accesos de memoQ por cliente; la contraseña no se busca', async () => {
+    const client = await post<Client>('/api/clients', { name: 'Hangul Loc' });
+    const a = await post<ClientAccount>('/api/client-accounts', {
+      clientId: client.id,
+      label: 'Servidor principal',
+      serverUrl: 'https://memoq.hangul-loc.example',
+      username: 'traductora.es',
+      password: 'S3creta!',
+    });
+    await post('/api/client-accounts', {
+      clientId: client.id,
+      tool: 'phrase',
+      label: 'Proyecto Dragón',
+      username: 'ana@ejemplo.es',
+      password: 'otra',
+    });
+    const detail = await get<{ accounts: ClientAccount[] }>(`/api/clients/${client.id}`);
+    expect(detail.accounts.map((x) => [x.tool, x.label, x.password])).toEqual([
+      ['memoq', 'Servidor principal', 'S3creta!'],
+      ['phrase', 'Proyecto Dragón', 'otra'],
+    ]);
+    // El servidor y el usuario se encuentran en la búsqueda global; la contraseña no.
+    const byServer = await get<{ entityId: string }[]>('/api/search?q=hangul-loc');
+    expect(byServer.some((r) => r.entityId === client.id)).toBe(true);
+    expect(await get<unknown[]>('/api/search?q=S3creta')).toHaveLength(0);
+
+    await patch(`/api/client-accounts/${a.id}`, { password: 'Nueva1' });
+    const res = await t.app.inject({ method: 'DELETE', url: `/api/client-accounts/${a.id}` });
+    expect(res.statusCode).toBe(200);
+    expect(
+      (await get<ClientAccount[]>(`/api/clients/${client.id}/accounts`)).map((x) => x.label),
+    ).toEqual(['Proyecto Dragón']);
   });
 
   it('elige la tarifa más específica', async () => {

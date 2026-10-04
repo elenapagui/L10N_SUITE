@@ -85,6 +85,32 @@ export const contactInputSchema = z.object({
 });
 export const contactUpdateSchema = patchSchema(contactInputSchema.omit({ clientId: true }));
 
+/** Herramientas con acceso propio de cada cliente (servidor de memoQ, Trados…). */
+export const ACCOUNT_TOOLS = [
+  { value: 'memoq', label: 'memoQ' },
+  { value: 'trados', label: 'Trados' },
+  { value: 'phrase', label: 'Phrase (Memsource)' },
+  { value: 'xtm', label: 'XTM' },
+  { value: 'smartcat', label: 'Smartcat' },
+  { value: 'crowdin', label: 'Crowdin' },
+  { value: 'other', label: 'Otra' },
+] as const;
+
+export const clientAccountInputSchema = z.object({
+  clientId: idSchema,
+  tool: z
+    .enum(['memoq', 'trados', 'phrase', 'xtm', 'smartcat', 'crowdin', 'other'])
+    .default('memoq'),
+  label: optionalText(120),
+  serverUrl: optionalText(500),
+  username: optionalText(200),
+  password: optionalText(500),
+  notes: optionalText(5000),
+});
+export const clientAccountUpdateSchema = patchSchema(
+  clientAccountInputSchema.omit({ clientId: true }),
+);
+
 export const rateInputSchema = z.object({
   clientId: optId,
   service: z.enum(valuesOf(SERVICES)).default('translation'),

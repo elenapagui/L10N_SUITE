@@ -84,7 +84,8 @@ export function updateRow(
   map: ColumnMap,
   id: string,
   patch: Record<string, unknown>,
-  options: { timestamps?: boolean; what?: string } = {},
+  /** `softDelete: false` para tablas sin papelera (sin columna deleted_at). */
+  options: { timestamps?: boolean; what?: string; softDelete?: boolean } = {},
 ): void {
   const sets: string[] = [];
   const params: unknown[] = [];
@@ -100,7 +101,9 @@ export function updateRow(
   }
   if (sets.length === 0) return;
   const res = ctx.sqlite
-    .prepare(`UPDATE ${table} SET ${sets.join(', ')} WHERE id = ? AND deleted_at IS NULL`)
+    .prepare(
+      `UPDATE ${table} SET ${sets.join(', ')} WHERE id = ?${options.softDelete === false ? '' : ' AND deleted_at IS NULL'}`,
+    )
     .run(...params, id);
   if (res.changes === 0) throw new NotFoundError(options.what);
 }

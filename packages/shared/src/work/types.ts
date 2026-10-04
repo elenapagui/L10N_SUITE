@@ -58,6 +58,19 @@ export interface Contact extends Timestamps {
   notes: string | null;
 }
 
+export interface ClientAccount extends Timestamps {
+  id: string;
+  clientId: string;
+  tool: 'memoq' | 'trados' | 'phrase' | 'xtm' | 'smartcat' | 'crowdin' | 'other';
+  label: string | null;
+  serverUrl: string | null;
+  username: string | null;
+  /** Sin cifrar (decisión de la usuaria; se avisa en la ficha). */
+  password: string | null;
+  notes: string | null;
+  sortOrder: number;
+}
+
 export interface Rate extends Timestamps {
   id: string;
   clientId: string | null;

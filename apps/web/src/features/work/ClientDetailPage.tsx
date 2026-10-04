@@ -25,6 +25,7 @@ import { useApiMutation, useClient, useProjects } from '@/hooks/work';
 import { useTrashWithUndo } from '@/hooks/mutations';
 import { api } from '@/lib/api';
 import { RatesTable } from './RatesTable';
+import { ClientAccountsPanel } from './ClientAccountsPanel';
 import { ProjectsTable, NewProjectDialog } from './ProjectsPage';
 import { useClientProfitability } from '@/features/finance/ProfitabilityPanel';
 import { BackLink, FieldGrid, Section, Stat, usePatch } from './shared';
@@ -179,6 +180,7 @@ export function ClientDetailPage() {
       </Page>
     );
   const { client, contacts, rates } = q.data;
+  const accounts = q.data.accounts ?? [];
   const profit = profitability.data?.clients.find((c) => c.clientId === client.id);
   const baseMoney = (c: number) => formatMoney(c, profitability.data?.baseCurrency ?? 'EUR');
   const save = (p: Partial<Client>) => patch.mutate(p);
@@ -262,6 +264,9 @@ export function ClientDetailPage() {
           <TabsTrigger value="resumen">Datos</TabsTrigger>
           <TabsTrigger value="contactos">Contactos ({contacts.length})</TabsTrigger>
           <TabsTrigger value="tarifas">Tarifas ({rates.length})</TabsTrigger>
+          <TabsTrigger value="accesos" data-testid="tab-accounts">
+            Accesos ({accounts.length})
+          </TabsTrigger>
           <TabsTrigger value="proyectos">Proyectos ({client.projectCount})</TabsTrigger>
           <TabsTrigger value="adjuntos">Adjuntos</TabsTrigger>
           <TabsTrigger value="notas">Notas</TabsTrigger>
@@ -385,6 +390,9 @@ export function ClientDetailPage() {
         </TabsContent>
         <TabsContent value="contactos">
           <ContactsPanel clientId={client.id} contacts={contacts} />
+        </TabsContent>
+        <TabsContent value="accesos">
+          <ClientAccountsPanel clientId={client.id} accounts={accounts} />
         </TabsContent>
         <TabsContent value="tarifas">
           <RatesTable rates={rates} clientId={client.id} currency={client.currency} />

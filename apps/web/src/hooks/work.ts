@@ -17,6 +17,7 @@ import type {
   TaskStatus,
   Template,
   TimeEntry,
+  ClientAccount,
 } from '@l10n/shared';
 import { api } from '@/lib/api';
 
@@ -111,7 +112,10 @@ export const useClients = () =>
 export const useClient = (id: string) =>
   useQuery({
     queryKey: ['client', id],
-    queryFn: () => api<{ client: Client; contacts: Contact[]; rates: Rate[] }>(`/clients/${id}`),
+    queryFn: () =>
+      api<{ client: Client; contacts: Contact[]; rates: Rate[]; accounts: ClientAccount[] }>(
+        `/clients/${id}`,
+      ),
     enabled: Boolean(id),
   });
 export const useRates = (clientId?: string) =>

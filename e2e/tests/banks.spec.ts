@@ -86,3 +86,27 @@ test('gastos recurrentes: «Se repite» y la pestaña de recurrentes', async ({ 
   await expect(rec).toContainText('Cada mes');
   await expect(rec).toContainText('13,00');
 });
+
+test('cliente: accesos de memoQ con usuario y contraseña', async ({ page, request }) => {
+  const client = await post(request, '/api/clients', { name: 'Agencia Accesos E2E' });
+  await openApp(page, `#/trabajo/clientes/${client.id}`);
+  await page.getByTestId('tab-accounts').click();
+  await page.getByTestId('add-account').click();
+  await page.getByTestId('account-server').fill('https://memoq.agencia.example');
+  await page.getByTestId('account-server').press('Enter');
+  await page.getByTestId('account-user').fill('traductora.es');
+  await page.getByTestId('account-user').press('Enter');
+  await page.getByTestId('account-password').fill('S3creta!');
+  await page.getByTestId('account-password').press('Enter');
+  // La contraseña está oculta hasta pulsar «Mostrar».
+  await expect(page.getByTestId('account-password')).toHaveAttribute('type', 'password');
+  await page.getByRole('button', { name: 'Mostrar la contraseña' }).click();
+  await expect(page.getByTestId('account-password')).toHaveValue('S3creta!');
+  await expect(page.getByTestId('tab-accounts')).toContainText('Accesos (1)');
+
+  // Se conserva al volver a la ficha.
+  await page.reload();
+  await expect(page.locator('[data-app-ready="true"]')).toBeVisible();
+  await page.getByTestId('tab-accounts').click();
+  await expect(page.getByTestId('account-user')).toHaveValue('traductora.es');
+});
