@@ -17,6 +17,7 @@ import { CorpusGamePage } from '@/features/corpus/CorpusGamePage';
 import { CorpusPage } from '@/features/corpus/CorpusPage';
 import { DocumentPage } from '@/features/corpus/DocumentPage';
 import { ExpensesPage } from '@/features/finance/ExpensesPage';
+import { BanksPage } from '@/features/finance/BanksPage';
 import { InvoicesPage } from '@/features/finance/InvoicesPage';
 import { ReportsPage } from '@/features/finance/ReportsPage';
 import { HomePage } from '@/features/home/HomePage';
@@ -147,6 +148,11 @@ const expensesRoute = createRoute({
   path: '/finanzas/gastos',
   component: ExpensesPage,
 });
+const banksRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: '/finanzas/bancos',
+  component: BanksPage,
+});
 const reportsRoute = createRoute({
   getParentRoute: () => rootRoute,
   path: '/finanzas/informes',
@@ -275,6 +281,7 @@ const routes = [
   journalsRoute,
   libraryRoute,
   applicationsRoute,
+  banksRoute,
   applicationRoute,
 ];
 

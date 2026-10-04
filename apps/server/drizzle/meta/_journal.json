@@ -85,6 +85,13 @@
       "when": 1791111242916,
       "tag": "0011_empleo",
       "breakpoints": true
+    },
+    {
+      "idx": 12,
+      "version": "6",
+      "when": 1791125072214,
+      "tag": "0012_bancos_y_gastos",
+      "breakpoints": true
     }
   ]
 }

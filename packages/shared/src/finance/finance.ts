@@ -113,6 +113,11 @@ export const expenseInputSchema = z.object({
   vatPct: z.number().min(0).max(100).default(21),
   deductible: z.boolean().default(true),
   notes: optionalText(10_000),
+  bankAccountId: z
+    .string()
+    .max(64)
+    .nullish()
+    .transform((v) => v ?? null),
 });
 export const expenseUpdateSchema = patchSchema(expenseInputSchema);
 
@@ -156,6 +161,12 @@ export interface Expense {
   totalCents: number;
   deductible: boolean;
   notes: string | null;
+  bankAccountId: string | null;
+  bankAccountName: string | null;
+  /** Fecha en que se restó del saldo del banco (botón «Cargar»). */
+  chargedAt: string | null;
+  /** Plantilla de gasto recurrente que lo apuntó. */
+  recurringId: string | null;
   createdAt: string;
   updatedAt: string;
 }

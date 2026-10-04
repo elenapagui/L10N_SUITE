@@ -1,6 +1,9 @@
 import { useQuery } from '@tanstack/react-query';
 import type {
+  BankAccount,
+  BankMovement,
   Expense,
+  RecurringExpense,
   FinanceOverview,
   Forecast,
   Invoice,
@@ -48,3 +51,26 @@ export const useQuarter = (year: number, quarter: number) =>
     queryKey: ['finance-quarter', year, quarter],
     queryFn: () => api<QuarterReport>('/reports/quarter', { query: { year, quarter } }),
   });
+
+export const useBankAccounts = () =>
+  useQuery({ queryKey: ['bank-accounts'], queryFn: () => api<BankAccount[]>('/bank-accounts') });
+export const useBankMovements = (id: string | null) =>
+  useQuery({
+    queryKey: ['bank-movements', id],
+    queryFn: () => api<BankMovement[]>(`/bank-accounts/${id}/movements`),
+    enabled: Boolean(id),
+  });
+export const useRecurringExpenses = () =>
+  useQuery({
+    queryKey: ['recurring-expenses'],
+    queryFn: () => api<RecurringExpense[]>('/recurring-expenses'),
+  });
+
+/** Lo que cambia al apuntar, cargar o editar gastos. */
+export const EXPENSE_KEYS = [
+  ['expenses'],
+  ['bank-accounts'],
+  ['bank-movements'],
+  ['recurring-expenses'],
+  ['finance-overview'],
+];

@@ -15,6 +15,8 @@ import { registerTemplateEntity } from './modules/work/templates';
 import { registerTimeEntity } from './modules/work/time';
 import { registerInvoiceEntity } from './modules/finance/invoices';
 import { registerExpenseEntity } from './modules/finance/expenses';
+import { registerBankEntity } from './modules/finance/banks';
+import { registerRecurringEntity } from './modules/finance/recurring';
 import { registerAcademicEntities } from './modules/academic/publications';
 import { registerReferenceEntity } from './modules/academic/references';
 import { registerCareerEntities } from './modules/career/applications';
@@ -37,6 +39,8 @@ export function registerEntities(): void {
   registerTemplateEntity();
   registerInvoiceEntity();
   registerExpenseEntity();
+  registerBankEntity();
+  registerRecurringEntity();
   registerPageEntity();
   registerTableEntity();
   registerResourceEntities();

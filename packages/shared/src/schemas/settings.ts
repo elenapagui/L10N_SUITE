@@ -25,6 +25,11 @@ export const preferenceSettingsSchema = z.object({
   fxRates: z.record(z.string().length(3), z.number().positive().max(1_000_000)).default({}),
   /** Días sin respuesta tras los que se avisa para escribir de nuevo a una empresa. */
   applicationFollowUpDays: z.number().int().min(1).max(90).default(10),
+  /** Hora de entrega habitual de los encargos (se pone sola al elegir la fecha); '' = ninguna. */
+  defaultDueTime: z
+    .string()
+    .regex(/^(([01]\d|2[0-3]):[0-5]\d)?$/)
+    .default('23:59'),
 });
 
 export const backupSettingsSchema = z.object({

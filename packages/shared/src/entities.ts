@@ -19,6 +19,12 @@ export const ENTITY_TYPES = {
   client_query: { label: 'Consulta', plural: 'Consultas', route: '/trabajo/consultas' },
   invoice: { label: 'Factura', plural: 'Facturas', route: '/finanzas/facturas' },
   expense: { label: 'Gasto', plural: 'Gastos', route: '/finanzas/gastos' },
+  bank_account: { label: 'Cuenta bancaria', plural: 'Cuentas bancarias', route: '/finanzas/bancos' },
+  recurring_expense: {
+    label: 'Gasto recurrente',
+    plural: 'Gastos recurrentes',
+    route: '/finanzas/gastos',
+  },
   page: { label: 'Página', plural: 'Páginas', route: '/paginas' },
   custom_table: { label: 'Tabla', plural: 'Tablas', route: '/tablas' },
   glossary_term: { label: 'Término', plural: 'Términos', route: '/trabajo/juegos' },

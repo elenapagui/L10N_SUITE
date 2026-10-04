@@ -15,6 +15,7 @@ import { OPEN_JOB_STATUSES } from './clients';
 import { listJobs } from './jobs';
 import { listTasks } from './tasks';
 import { applicationCalendarEvents, applicationReminders } from '../career/applications';
+import { recurringReminders } from '../finance/recurring';
 
 function startOfLocalDay(d: Date): Date {
   return new Date(d.getFullYear(), d.getMonth(), d.getDate());
@@ -254,6 +255,7 @@ export function pendingReminders(ctx: AppContext): Reminder[] {
     });
   }
   reminders.push(...applicationReminders(ctx));
+  reminders.push(...recurringReminders(ctx));
   if (now.getDay() === 1) {
     reminders.push({
       key: `weekly-review:${today}`,

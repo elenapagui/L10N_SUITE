@@ -16,6 +16,8 @@ import { tagRoutes } from './modules/tags';
 import { trashRoutes } from './modules/trash';
 import { importRoutes } from './modules/import';
 import { expenseRoutes } from './modules/finance/expenses';
+import { bankRoutes } from './modules/finance/banks';
+import { generateRecurringExpenses, recurringRoutes } from './modules/finance/recurring';
 import { invoiceRoutes } from './modules/finance/invoices';
 import { reportRoutes } from './modules/finance/reports';
 import { reviewRoutes } from './modules/review';
@@ -147,13 +149,27 @@ export async function buildApp(options: BuildOptions): Promise<FastifyInstance> 
     if (after !== null && after !== before) markDirty(ctx);
   });
   let morphTimer: NodeJS.Timeout | null = null;
+  let recurringTimer: NodeJS.Timeout | null = null;
+  const runRecurring = () => {
+    try {
+      const n = generateRecurringExpenses(ctx);
+      if (n) app.log.info({ n }, 'Gastos recurrentes apuntados');
+    } catch (err) {
+      app.log.error({ err }, 'Falló la generación de gastos recurrentes');
+    }
+  };
   app.addHook('onReady', async () => {
     await syncOnStartup(ctx);
+    // Gastos recurrentes que tocan: al arrancar y después cada hora.
+    runRecurring();
+    recurringTimer = setInterval(runRecurring, 60 * 60_000);
+    recurringTimer.unref?.();
     // Si el analizador del coreano está instalado, se termina de analizar lo pendiente.
     if (isModelInstalled(ctx)) morphTimer = setTimeout(() => kickAnalysis(ctx), 5000);
   });
   app.addHook('onClose', async () => {
     if (morphTimer) clearTimeout(morphTimer);
+    if (recurringTimer) clearInterval(recurringTimer);
   });
 
   await app.register(systemRoutes);
@@ -186,6 +202,8 @@ export async function buildApp(options: BuildOptions): Promise<FastifyInstance> 
   await app.register(referenceRoutes);
   await app.register(applicationRoutes);
   await app.register(expenseRoutes);
+  await app.register(bankRoutes);
+  await app.register(recurringRoutes);
   await app.register(reportRoutes);
   await app.register(reviewRoutes);
   await app.register(syncRoutes);

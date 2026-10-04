@@ -2,13 +2,13 @@ import { Pause, Play, Trash2 } from 'lucide-react';
 import { describeRecurrence, PRIORITIES, type RecurrenceRule, type Task } from '@l10n/shared';
 import { Button } from '@/components/ui/button';
 import { Field } from '@/components/ui/label';
-import { Input, NativeSelect } from '@/components/ui/input';
+import { NativeSelect } from '@/components/ui/input';
 import { Separator, Spinner } from '@/components/ui/misc';
 import { Sheet } from '@/components/ui/sheet';
 import { ChecklistEditor } from '@/components/common/ChecklistEditor';
 import { CommentsPanel } from '@/components/common/CommentsPanel';
 import { EntitySelect } from '@/components/common/EntitySelect';
-import { CommitInput, DecimalInput, DateInput } from '@/components/common/inputs';
+import { CommitInput, DecimalInput, DateInput, DueTimeInput } from '@/components/common/inputs';
 import { TagPicker } from '@/components/common/TagPicker';
 import { useTrashWithUndo } from '@/hooks/mutations';
 import {
@@ -148,11 +148,7 @@ function TaskEditor({ task, onOpenTask }: { task: Task; onOpenTask: (id: string)
           />
         </Field>
         <Field label="Hora">
-          <Input
-            type="time"
-            value={task.dueTime ?? ''}
-            onChange={(e) => save.mutate({ dueTime: e.target.value || null })}
-          />
+          <DueTimeInput value={task.dueTime} onChange={(dueTime) => save.mutate({ dueTime })} />
         </Field>
         <Field label="Estimación (horas)">
           <DecimalInput

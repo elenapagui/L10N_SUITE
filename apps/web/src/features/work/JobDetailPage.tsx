@@ -31,10 +31,11 @@ import {
   DialogTitle,
 } from '@/components/ui/dialog';
 import { Field } from '@/components/ui/label';
-import { Input, NativeSelect, Textarea } from '@/components/ui/input';
+import { NativeSelect, Textarea } from '@/components/ui/input';
 import { Spinner, Switch } from '@/components/ui/misc';
 import { AttachmentsPanel } from '@/components/common/AttachmentsPanel';
-import { CommitInput, DecimalInput, DateInput } from '@/components/common/inputs';
+import { CommitInput, DecimalInput, DateInput, DueTimeInput } from '@/components/common/inputs';
+import { useSettings } from '@/hooks/core';
 import { TagPicker } from '@/components/common/TagPicker';
 import { Page, PageHeader } from '@/components/layout/PageHeader';
 import { useClient, useJob, useTimer } from '@/hooks/work';
@@ -318,6 +319,8 @@ export function JobDetailPage() {
   const trash = useTrashWithUndo();
   const timer = useTimer();
   const controls = useTimerControls();
+  const settings = useSettings();
+  const defaultDueTime = settings.data?.preferences.defaultDueTime ?? '23:59';
 
   if (q.isLoading)
     return (
@@ -482,14 +485,24 @@ export function JobDetailPage() {
               </Field>
               <div className="grid grid-cols-[1fr_auto] gap-2">
                 <Field label="Entrega">
-                  <DateInput value={job.dueDate} onCommit={(v) => save({ dueDate: v })} />
+                  <DateInput
+                    value={job.dueDate}
+                    onCommit={(v) =>
+                      save(
+                        // Al poner la fecha, la hora habitual de entrega si aún no tiene.
+                        v && !job.dueTime && defaultDueTime
+                          ? { dueDate: v, dueTime: defaultDueTime }
+                          : { dueDate: v },
+                      )
+                    }
+                    testId="job-detail-due"
+                  />
                 </Field>
                 <Field label="Hora">
-                  <Input
-                    type="time"
-                    value={job.dueTime ?? ''}
-                    onChange={(e) => save({ dueTime: e.target.value || null })}
-                    className="w-28"
+                  <DueTimeInput
+                    value={job.dueTime}
+                    onChange={(dueTime) => save({ dueTime })}
+                    testId="job-detail-due-time"
                   />
                 </Field>
               </div>

@@ -3,6 +3,7 @@ import {
   Newspaper,
   BookOpen,
   Building2,
+  Landmark,
   BriefcaseBusiness,
   CalendarDays,
   ChartColumn,
@@ -117,7 +118,19 @@ export const NAV_SECTIONS: NavSection[] = [
         phase: 2,
         keywords: 'facturas cobros',
       },
-      { label: 'Gastos', to: '/finanzas/gastos', icon: Wallet, phase: 2 },
+      {
+        label: 'Gastos',
+        to: '/finanzas/gastos',
+        icon: Wallet,
+        phase: 2,
+        keywords: 'recurrentes suscripciones',
+      },
+      {
+        label: 'Bancos',
+        to: '/finanzas/bancos',
+        icon: Landmark,
+        keywords: 'cuentas saldo iban',
+      },
       {
         label: 'Informes',
         to: '/finanzas/informes',

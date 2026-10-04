@@ -24,7 +24,8 @@ import { Input, NativeSelect } from '@/components/ui/input';
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { DataTable, type ColumnDef } from '@/components/common/DataTable';
 import { EntitySelect } from '@/components/common/EntitySelect';
-import { DecimalInput } from '@/components/common/inputs';
+import { DecimalInput, DueTimeInput } from '@/components/common/inputs';
+import { useSettings } from '@/hooks/core';
 import { BillingBadge, DueLabel, JobStatusBadge } from '@/components/common/badges';
 import { EmptyState, Page, PageHeader } from '@/components/layout/PageHeader';
 import { useApiMutation, useJobs, useProject, useProjects, useTemplates } from '@/hooks/work';
@@ -50,6 +51,8 @@ export function NewJobDialog({
   const [unit, setUnit] = useState('word');
   const [volume, setVolume] = useState<number | null>(null);
   const [dueDate, setDueDate] = useState('');
+  const settings = useSettings();
+  const defaultDueTime = settings.data?.preferences.defaultDueTime ?? '23:59';
   const [dueTime, setDueTime] = useState('');
   const [poNumber, setPoNumber] = useState('');
   const [templateId, setTemplateId] = useState('template-job-standard');
@@ -240,16 +243,19 @@ export function NewJobDialog({
                 <Input
                   type="date"
                   value={dueDate}
-                  onChange={(e) => setDueDate(e.target.value)}
+                  onChange={(e) => {
+                    setDueDate(e.target.value);
+                    // Al poner la fecha, la hora habitual de entrega (23:59 por defecto).
+                    if (e.target.value && !dueTime && defaultDueTime) setDueTime(defaultDueTime);
+                  }}
                   data-testid="job-due"
                 />
               </Field>
               <Field label="Hora">
-                <Input
-                  type="time"
+                <DueTimeInput
                   value={dueTime}
-                  onChange={(e) => setDueTime(e.target.value)}
-                  className="w-28"
+                  onChange={(v) => setDueTime(v ?? '')}
+                  testId="job-due-time"
                 />
               </Field>
             </div>

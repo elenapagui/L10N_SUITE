@@ -306,3 +306,24 @@ export const templates = sqliteTable('templates', {
   ...timestamps(),
   ...softDelete(),
 });
+
+/** Accesos de cada cliente a sus herramientas (servidor de memoQ, Trados, Phrase…). */
+export const clientAccounts = sqliteTable(
+  'client_accounts',
+  {
+    id: id(),
+    clientId: text('client_id')
+      .notNull()
+      .references(() => clients.id, { onDelete: 'cascade' }),
+    tool: text('tool').notNull().default('memoq'),
+    label: text('label'),
+    serverUrl: text('server_url'),
+    username: text('username'),
+    /** Sin cifrar, por decisión de la usuaria (se avisa en la ficha). */
+    password: text('password'),
+    notes: text('notes'),
+    sortOrder: real('sort_order').notNull().default(0),
+    ...timestamps(),
+  },
+  (t) => [index('client_accounts_client_idx').on(t.clientId)],
+);

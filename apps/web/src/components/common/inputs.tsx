@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { formatNumber, parseDecimal } from '@l10n/shared';
 import { Input, Textarea } from '@/components/ui/input';
 import { cn } from '@/lib/utils';
+import { useSettings } from '@/hooks/core';
 
 /**
  * Número con formato español (acepta «1.234,56» o «1234.56»). Guarda al salir del campo.
@@ -181,5 +182,54 @@ export function DateInput({
       className={className}
       data-testid={testId}
     />
+  );
+}
+
+/**
+ * Hora de entrega con un botón para poner la hora habitual (Ajustes → Preferencias, 23:59 por
+ * defecto) y otro para quitarla.
+ */
+export function DueTimeInput({
+  value,
+  onChange,
+  testId,
+}: {
+  value: string | null | undefined;
+  onChange: (value: string | null) => void;
+  testId?: string;
+}) {
+  const settings = useSettings();
+  const preset = settings.data?.preferences.defaultDueTime || '23:59';
+  return (
+    <div className="flex items-center gap-1">
+      <Input
+        type="time"
+        value={value ?? ''}
+        onChange={(e) => onChange(e.target.value || null)}
+        className="w-28"
+        data-testid={testId}
+      />
+      {value !== preset && (
+        <button
+          type="button"
+          className="rounded border px-1.5 py-1 text-xs text-muted-foreground hover:bg-accent"
+          onClick={() => onChange(preset)}
+          title={`Entrega a las ${preset}`}
+          data-testid={testId ? `${testId}-preset` : undefined}
+        >
+          {preset}
+        </button>
+      )}
+      {value && (
+        <button
+          type="button"
+          className="rounded px-1 text-xs text-muted-foreground hover:bg-accent"
+          onClick={() => onChange(null)}
+          aria-label="Quitar la hora"
+        >
+          ×
+        </button>
+      )}
+    </div>
   );
 }

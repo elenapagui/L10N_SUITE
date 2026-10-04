@@ -246,6 +246,21 @@ function PreferencesForm({ initial }: { initial: Settings['preferences'] }) {
           />
         </Field>
         <Field
+          label="Hora de entrega habitual"
+          hint="Se pone sola al elegir la fecha de entrega de un encargo. Vacía, no se pone ninguna."
+        >
+          <Input
+            type="time"
+            className="w-32"
+            defaultValue={initial.defaultDueTime}
+            onBlur={(e) => {
+              if (e.target.value !== initial.defaultDueTime)
+                save({ defaultDueTime: e.target.value });
+            }}
+            data-testid="pref-due-time"
+          />
+        </Field>
+        <Field
           label="Seguimiento de candidaturas (días)"
           hint="Días sin respuesta tras los que se avisa para escribir de nuevo a una empresa."
         >
